@@ -1,33 +1,34 @@
-# Word Search Web App
+# Word Search Web Application
 
-A modern, interactive word search puzzle game built with PHP 8.2+, jQuery, and Bootstrap 5. Generate puzzles, play games, and share with friends!
+A modern, browser-based Word Search game built with PHP 8.3+, PostgreSQL, Bootstrap 5, and jQuery. Features user authentication, theme-based puzzles, difficulty levels, and score tracking.
 
 ## Features
 
-- **Multiple Difficulty Levels**: Easy (10×10), Medium (12×12), Hard (15×15)
-- **Theme Packs**: Animals, Geography, Technology, Food
-- **Custom Puzzles**: Create your own word lists
-- **Interactive Gameplay**: Click and drag to select words
-- **Responsive Design**: Works on desktop and mobile
-- **Shareable Links**: Generate unique URLs for each puzzle
-- **Timer & Progress**: Track your solving time and progress
-- **Hints System**: Get help when stuck
-- **Print Support**: Print puzzles for offline solving
+- 🎯 **Smart Puzzle Generation**: Advanced algorithms for optimal word placement
+- 🎨 **Theme System**: 6 built-in themes (Animals, Technology, Food, Geography, Medical, Automotive)
+- 📱 **Responsive Design**: Mobile-friendly Bootstrap 5 interface
+- 🔐 **User Authentication**: JWT-based login/registration system
+- 🏆 **Score Tracking**: Leaderboards and personal statistics
+- 🎮 **Multiple Difficulties**: Easy (10×10), Medium (15×15), Hard (20×20)
+- 🔄 **Advanced Options**: Diagonal words, reverse words, seeded generation
+- 💾 **Database Storage**: PostgreSQL with JSON fallback
 
-## Tech Stack
+## Technology Stack
 
-- **Backend**: PHP 8.2+ with PSR-4 autoloading
-- **Frontend**: jQuery 3.7+, Bootstrap 5.3+
-- **Storage**: JSON file-based (easily upgradable to database)
-- **Server**: Nginx + PHP-FPM
-- **Dependencies**: Composer for PHP package management
+- **Backend**: PHP 8.3+, PSR-4 autoloading
+- **Database**: PostgreSQL with PDO
+- **Frontend**: Bootstrap 5.3+, jQuery 3.7+
+- **Authentication**: JWT tokens with Firebase/php-jwt
+- **Styling**: Custom CSS with green development theme
+- **Icons**: Bootstrap Icons
 
 ## Requirements
 
-- PHP 8.2 or higher
+- PHP 8.3 or higher
+- PostgreSQL 12 or higher
 - Composer
-- Nginx (or Apache with mod_rewrite)
-- Modern web browser with JavaScript enabled
+- Web server (Nginx/Apache) with PHP-FPM
+- Modern web browser
 
 ## Installation
 
@@ -35,7 +36,7 @@ A modern, interactive word search puzzle game built with PHP 8.2+, jQuery, and B
 
 ```bash
 git clone <repository-url>
-cd wordsearch
+cd WordSearch/Dev
 ```
 
 ### 2. Install Dependencies
@@ -44,16 +45,50 @@ cd wordsearch
 composer install
 ```
 
-### 3. Set Up Web Server
+### 3. Environment Configuration
+
+Copy the example environment file and configure your settings:
+
+```bash
+cp env.example .env
+```
+
+Edit `.env` with your database credentials:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_DATABASE=wordsearch_dev
+DB_USERNAME=wordsearch_dev_user
+DB_PASSWORD=your_secure_password
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRY=3600
+APP_URL=https://your-domain.com
+```
+
+### 4. Database Setup
+
+Run the database setup script:
+
+```bash
+php setup_database.php
+```
+
+This will:
+- Create the PostgreSQL database and user
+- Create all necessary tables
+- Set up indexes and triggers
+- Configure proper permissions
+
+### 5. Web Server Configuration
 
 #### Nginx Configuration
 
-Create a server block in your Nginx configuration:
-
 ```nginx
 server {
-    server_name wordsearch.local;
-    root /path/to/wordsearch/public;
+    listen 80;
+    server_name your-domain.com;
+    root /var/www/html/WordSearch/Dev/public;
     index index.php;
 
     location / {
@@ -61,19 +96,21 @@ server {
     }
 
     location ~ \.php$ {
-        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        include fastcgi_params;
     }
 
-    access_log /var/log/nginx/wordsearch.access.log;
-    error_log /var/log/nginx/wordsearch.error.log warn;
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
 }
 ```
 
 #### Apache Configuration
 
-Enable mod_rewrite and create a `.htaccess` file in the `public/` directory:
+Ensure `mod_rewrite` is enabled and add to `.htaccess`:
 
 ```apache
 RewriteEngine On
@@ -82,152 +119,147 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]
 ```
 
-### 4. Set Permissions
+### 6. File Permissions
+
+Ensure proper permissions for storage directories:
 
 ```bash
 chmod -R 775 storage/
 chown -R www-data:www-data storage/
 ```
 
-### 5. Environment Configuration
-
-```bash
-cp env.example .env
-# Edit .env with your settings
-```
-
 ## Usage
 
-### Playing Games
+### Starting a New Game
 
-1. **Home Page**: Choose difficulty level and theme
-2. **Quick Start**: Jump into a game with default settings
-3. **Game Interface**: Click and drag to select words
-4. **Progress Tracking**: Monitor found words and time
-5. **Hints**: Use hint button when stuck
+1. Visit the home page
+2. Select a theme (Animals, Technology, etc.)
+3. Choose difficulty level
+4. Configure game options (diagonals, reverse words)
+5. Click "Start New Game"
 
-### Creating Custom Puzzles
+### Game Controls
 
-1. **Create Page**: Navigate to `/create`
-2. **Word List**: Enter your custom words
-3. **Settings**: Choose grid size and options
-4. **Generate**: Create and preview your puzzle
-5. **Share**: Get a shareable link
+- **Mouse/Touch**: Click and drag to select words
+- **Word List**: Found words are automatically marked
+- **Timer**: Tracks completion time
+- **Hints**: Available for assistance
 
-### API Endpoints
+### User Features
 
+- **Registration**: Create new account with email verification
+- **Login**: Secure JWT-based authentication
+- **Profile**: Update personal information
+- **Scores**: View personal and global leaderboards
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/profile` - Get user profile
+- `POST /api/auth/profile/update` - Update profile
+- `POST /api/auth/password/change` - Change password
+
+### Game
 - `POST /api/generate` - Generate new puzzle
-- `GET /api/puzzle/{id}` - Retrieve puzzle by ID
+- `GET /api/puzzle/{id}` - Get puzzle by ID
 - `POST /api/validate` - Validate word selection
+- `GET /api/themes` - Get available themes
 
-## Project Structure
-
-```
-wordsearch/
-├── app/                    # PHP source code
-│   ├── Controllers/       # Application controllers
-│   ├── Services/          # Business logic services
-│   ├── Models/            # Data models
-│   ├── Http/              # HTTP handling (Router)
-│   └── Utils/             # Utility classes
-├── bootstrap/              # Application bootstrap
-├── config/                 # Configuration files
-├── public/                 # Web root
-│   ├── assets/            # CSS, JS, images
-│   └── views/             # Page templates
-├── resources/              # Raw assets
-├── storage/                # Writable data
-│   ├── puzzles/           # Generated puzzles
-│   ├── logs/              # Application logs
-│   └── cache/             # Cache files
-└── tests/                  # PHPUnit tests
-```
+### Scores
+- `GET /api/scores` - Global leaderboards
+- `GET /api/scores/my` - Personal scores
+- `GET /api/scores/stats` - Global statistics
+- `GET /api/scores/my/stats` - Personal statistics
 
 ## Development
 
-### Running Locally
+### Project Structure
 
-1. **PHP Built-in Server** (for development):
-   ```bash
-   cd public
-   php -S wordsearch.dev.nofinway.com:8000
-   ```
-
-2. **Composer Development Server**:
-   ```bash
-   composer serve
-   ```
-
-### Code Style
-
-- Follow PSR-12 coding standards
-- Use strict types in all PHP files
-- Maintain consistent naming conventions
-
-### Testing
-
-```bash
-# Run tests
-composer test
-
-# Run with coverage
-composer test-coverage
 ```
-
-## Customization
+/wordsearch
+├── app/                    # PHP source (PSR-4: App\)
+│   ├── Controllers/       # API controllers
+│   ├── Services/          # Business logic services
+│   ├── Http/             # Routing and middleware
+│   └── Utils/            # Utility classes
+├── public/                # Web root
+│   ├── assets/           # CSS, JS, images
+│   ├── views/            # Page templates
+│   └── index.php         # Front controller
+├── resources/             # Theme word lists
+├── storage/               # Logs, puzzles, cache
+└── vendor/                # Composer dependencies
+```
 
 ### Adding New Themes
 
-1. Add word lists to `public/assets/js/app.js`
-2. Update theme selection in views
-3. Consider adding theme-specific styling
+1. Create a new JSON file in `resources/themes/`
+2. Follow the existing format:
 
-### Modifying Game Logic
-
-- **Puzzle Generation**: Edit `app/Services/PuzzleGenerator.php`
-- **Storage**: Modify `app/Services/PuzzleStore.php`
-- **Frontend**: Update `public/assets/js/app.js`
-
-### Styling Changes
-
-- **CSS**: Modify `public/assets/css/app.css`
-- **Bootstrap**: Override Bootstrap classes as needed
-- **Responsive**: Test on various screen sizes
-
-## Deployment
-
-### Production Considerations
-
-1. **Environment**: Set `APP_DEBUG=false` in production
-2. **Logging**: Configure proper log rotation
-3. **Security**: Enable HTTPS and security headers
-4. **Performance**: Consider Redis for caching
-5. **Database**: Upgrade to PostgreSQL/MySQL for larger scale
-
-### Docker Support
-
-```dockerfile
-FROM php:8.2-fpm
-# Add Dockerfile contents here
+```json
+{
+  "name": "Theme Name",
+  "description": "Theme description",
+  "difficulty": "medium",
+  "words": ["WORD1", "WORD2", "WORD3"]
+}
 ```
+
+### Customizing Styles
+
+Edit `public/assets/css/app.css` to modify the appearance. The application uses Bootstrap 5 with a custom green development theme.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Permission Errors**: Check storage directory permissions
-2. **Routing Issues**: Verify web server configuration
-3. **Puzzle Generation**: Check PHP memory limits
-4. **Mobile Issues**: Test touch events and responsive design
+1. **Database Connection Failed**
+   - Verify PostgreSQL is running
+   - Check credentials in `.env`
+   - Ensure database and user exist
+
+2. **Puzzle Generation Fails**
+   - Check theme JSON files exist
+   - Verify storage directory permissions
+   - Check error logs
+
+3. **Authentication Issues**
+   - Verify JWT secret is set
+   - Check token expiration settings
+   - Clear browser localStorage
 
 ### Debug Mode
 
-Enable debug mode in `.env`:
-```
-APP_DEBUG=true
+Enable debug mode by setting in `.env`:
+
+```env
+APP_ENV=development
 ```
 
-Check logs in `storage/logs/app.log`
+### Logs
+
+Check application logs in:
+- `/var/log/nginx/error.log` (Nginx)
+- `/var/log/apache2/error.log` (Apache)
+- `storage/logs/` (Application logs)
+
+## Performance
+
+- **Word Placement**: Intelligent backtracking with fallback strategies
+- **Database**: Optimized queries with proper indexing
+- **Caching**: File-based fallback for offline scenarios
+- **Grid Generation**: Seeded generation for reproducible puzzles
+
+## Security
+
+- **JWT Authentication**: Secure token-based authentication
+- **Password Hashing**: bcrypt password hashing
+- **Input Validation**: Server-side validation for all inputs
+- **Database Security**: Prepared statements with PDO
+- **CORS**: Proper cross-origin resource sharing headers
 
 ## Contributing
 
@@ -239,24 +271,25 @@ Check logs in `storage/logs/app.log`
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Support
 
-For issues and questions:
+For support and questions:
 - Check the troubleshooting section
-- Review existing issues
-- Create a new issue with detailed information
+- Review error logs
+- Open an issue on GitHub
 
-## Roadmap
+## Changelog
 
-- [ ] User accounts and progress tracking
-- [ ] Leaderboards and achievements
-- [ ] Advanced puzzle types
-- [ ] Mobile app version
-- [ ] Social features and sharing
-- [ ] Analytics and insights
+### Version 1.0.0
+- Initial release
+- Core word search functionality
+- User authentication system
+- Theme-based puzzles
+- Responsive design
+- Score tracking
 
 ---
 
-**Happy Word Searching!** 🧩✨
+**Happy Word Searching!** 🎯✨

@@ -6,134 +6,46 @@ declare(strict_types=1);
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load environment variables
-try {
-    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-    $dotenv->load();
-} catch (Exception $e) {
-    // Set default environment if .env file doesn't exist
-    $_ENV['APP_ENV'] = 'development';
-    $_ENV['APP_DEBUG'] = 'true';
-    $_ENV['APP_URL'] = 'http://localhost:8000';
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+$dotenv->load();
+
+// Set error reporting for development
+if ($_ENV['APP_ENV'] ?? 'development' === 'development') {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+} else {
+    error_reporting(0);
+    ini_set('display_errors', '0');
 }
 
-// Load configuration
-$config = [
-    'DB_HOST' => $_ENV['DB_HOST'] ?? 'localhost',
-    'DB_PORT' => $_ENV['DB_PORT'] ?? '5432',
-    'DB_DATABASE' => $_ENV['DB_DATABASE'] ?? 'wordsearch_dev',
-    'DB_USERNAME' => $_ENV['DB_USERNAME'] ?? 'wordsearch_dev_user',
-    'DB_PASSWORD' => $_ENV['DB_PASSWORD'] ?? '',
-    'JWT_SECRET' => $_ENV['JWT_SECRET'] ?? 'your-super-secret-jwt-key-change-this-in-production',
-    'JWT_EXPIRY' => $_ENV['JWT_EXPIRY'] ?? '3600',
-    'SESSION_SECURE' => $_ENV['SESSION_SECURE'] ?? 'true',
-    'SESSION_HTTP_ONLY' => $_ENV['SESSION_HTTP_ONLY'] ?? 'true',
-    'SESSION_SAME_SITE' => $_ENV['SESSION_SAME_SITE'] ?? 'Strict',
-    'game' => [
-        'directions' => [
-            'horizontal' => [0, 1],
-            'vertical' => [1, 0],
-            'diagonal_down' => [1, 1],
-            'diagonal_up' => [-1, 1]
-        ],
-        'maxWordLen' => 15
-    ]
-];
+// Handle CORS for API requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Max-Age: 86400');
+    exit(0);
+}
 
-// Initialize database service
-$dbService = new \App\Services\DatabaseService($config);
+// Set CORS headers for all requests
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Initialize router
-$router = new \App\Http\Router($config, $dbService);
-
-// Define routes
-$router->get('/', function() {
-    require __DIR__ . '/views/home.php';
-});
-
-$router->get('/play', function() {
-    require __DIR__ . '/views/play.php';
-});
-
-$router->get('/create', function() {
-    require __DIR__ . '/views/create.php';
-});
-
-$router->get('/scores', function() {
-    require __DIR__ . '/views/scores.php';
-});
-
-$router->get('/profile', function() {
-    require __DIR__ . '/views/profile.php';
-});
-
-// API routes
-$router->post('/api/auth/register', function() use ($dbService, $config) {
-    $authController = new \App\Controllers\AuthController($dbService, $config);
-    echo $authController->register();
-});
-
-$router->post('/api/auth/login', function() use ($dbService, $config) {
-    $authController = new \App\Controllers\AuthController($dbService, $config);
-    echo $authController->login();
-});
-
-$router->post('/api/auth/logout', function() use ($dbService, $config) {
-    $authController = new \App\Controllers\AuthController($dbService, $config);
-    echo $authController->logout();
-});
-
-$router->get('/api/auth/profile', function() use ($dbService, $config) {
-    $authController = new \App\Controllers\AuthController($dbService, $config);
-    echo $authController->profile();
-});
-
-$router->post('/api/auth/profile/update', function() use ($dbService, $config) {
-    $authController = new \App\Controllers\AuthController($dbService, $config);
-    echo $authController->updateProfile();
-});
-
-$router->post('/api/auth/password/change', function() use ($dbService, $config) {
-    $authController = new \App\Controllers\AuthController($dbService, $config);
-    echo $authController->changePassword();
-});
-
-// Scores API routes
-$router->get('/api/scores', function() use ($dbService, $config) {
-    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
-    echo $scoresController->getScores();
-});
-
-$router->get('/api/scores/my', function() use ($dbService, $config) {
-    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
-    echo $scoresController->getMyScores();
-});
-
-$router->get('/api/scores/stats', function() use ($dbService, $config) {
-    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
-    echo $scoresController->getStats();
-});
-
-$router->get('/api/scores/my/stats', function() use ($dbService, $config) {
-    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
-    echo $scoresController->getMyStats();
-});
-
-// Existing API routes
-$router->post('/api/generate', function() use ($router) {
-    echo $router->handleGeneratePuzzle();
-});
-
-$router->get('/api/puzzle/{id}', function($id) use ($router) {
-    echo $router->handleGetPuzzle($id);
-});
-
-$router->post('/api/validate', function() use ($router) {
-    echo $router->handleValidateWord();
-});
-
-$router->get('/api/themes', function() use ($router) {
-    echo $router->handleGetThemes();
-});
-
-// Dispatch the request
-$router->dispatch();
+// Create router and handle request
+try {
+    $router = new App\Http\Router();
+    $router->handleRequest($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+} catch (Exception $e) {
+    // Log error
+    error_log("Application error: " . $e->getMessage());
+    
+    // Send error response
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'error' => 'Internal server error',
+        'message' => $_ENV['APP_ENV'] === 'development' ? $e->getMessage() : 'Something went wrong'
+    ]);
+}

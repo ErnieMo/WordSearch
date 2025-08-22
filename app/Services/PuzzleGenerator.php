@@ -7,208 +7,284 @@ namespace App\Services;
 class PuzzleGenerator
 {
     private array $config;
-    private array $grid;
-    private array $placedWords = [];
-    private int $size;
     private array $directions;
+    private string $alphabet;
+    private int $maxWordLen;
 
-    public function __construct(array $config)
+    public function __construct()
     {
-        $this->config = $config;
-        $this->directions = $config['game']['directions'];
+        $this->config = require __DIR__ . '/../config.php';
+        $this->directions = $this->config['game']['directions'];
+        $this->alphabet = $this->config['game']['alphabet'];
+        $this->maxWordLen = $this->config['game']['maxWordLen'];
     }
 
-    public function generate(array $words, array $options): array
+    public function generatePuzzle(array $words, array $options): array
     {
-        $this->size = $options['size'] ?? 12;
-        $this->grid = array_fill(0, $this->size, array_fill(0, $this->size, ''));
-        $this->placedWords = [];
+        $size = $options['size'] ?? 15;
+        $diagonals = $options['diagonals'] ?? false;
+        $reverse = $options['reverse'] ?? false;
+        $seed = $options['seed'] ?? null;
 
-        // Sort words by length (longest first) for better placement
-        usort($words, function($a, $b) {
-            return strlen($b) - strlen($a);
-        });
-
-        // Filter words by max length
-        $words = array_filter($words, function($word) {
-            return strlen($word) <= $this->config['game']['maxWordLen'];
-        });
-
-        // Set seed for reproducible puzzles
-        if (isset($options['seed'])) {
-            mt_srand($options['seed']);
+        if ($seed !== null) {
+            mt_srand($seed);
         }
 
-        // Place words with retry logic
-        $maxRetries = 3;
-        $retryCount = 0;
-        
-        while ($retryCount < $maxRetries) {
-            $allWordsPlaced = true;
-            $this->placedWords = [];
-            $this->grid = array_fill(0, $this->size, array_fill(0, $this->size, ''));
+        // Filter and sort words by length
+        $filteredWords = $this->filterWords($words, $size);
+        $sortedWords = $this->sortWordsByLength($filteredWords);
+
+        // Generate grid
+        $grid = $this->createEmptyGrid($size);
+        $placedWords = [];
+        $failedWords = [];
+
+        // Try to place each word
+        foreach ($sortedWords as $word) {
+            $placed = $this->placeWord($grid, $word, $diagonals, $reverse);
             
-            foreach ($words as $word) {
-                if (!$this->placeWord($word, $options)) {
-                    $allWordsPlaced = false;
-                    error_log("Failed to place word: $word (attempt $retryCount)");
-                    break;
-                }
-            }
-            
-            if ($allWordsPlaced) {
-                error_log("Successfully placed all words on attempt " . ($retryCount + 1));
-                break;
-            }
-            
-            $retryCount++;
-            // Increase grid size slightly if words can't fit
-            if ($retryCount === 1) {
-                $this->size = min($this->size + 2, 20);
-                $this->grid = array_fill(0, $this->size, array_fill(0, $this->size, ''));
-                error_log("Increased grid size to: $this->size");
+            if ($placed) {
+                $placedWords[] = $placed;
+            } else {
+                $failedWords[] = $word;
             }
         }
 
         // Fill empty cells with random letters
-        $this->fillEmptyCells();
+        $this->fillEmptyCells($grid);
+
+        // Generate unique puzzle ID
+        $puzzleId = $this->generatePuzzleId();
 
         return [
-            'grid' => $this->grid,
+            'id' => $puzzleId,
+            'grid' => $grid,
             'words' => $words,
-            'placed' => $this->placedWords,
-            'size' => $this->size,
-            'seed' => $options['seed'] ?? mt_rand(),
+            'placed_words' => $placedWords,
+            'failed_words' => $failedWords,
+            'size' => $size,
+            'options' => $options,
+            'seed' => $seed
         ];
     }
 
-    private function placeWord(string $word, array $options): bool
+    private function filterWords(array $words, int $gridSize): array
     {
-        $maxAttempts = 200; // Increased attempts
+        return array_filter($words, function($word) use ($gridSize) {
+            $word = strtoupper(trim($word));
+            return strlen($word) <= min($gridSize, $this->maxWordLen) && 
+                   strlen($word) >= 3 && 
+                   preg_match('/^[A-Z]+$/', $word);
+        });
+    }
+
+    private function sortWordsByLength(array $words): array
+    {
+        usort($words, function($a, $b) {
+            return strlen($b) - strlen($a);
+        });
+        return $words;
+    }
+
+    private function createEmptyGrid(int $size): array
+    {
+        $grid = [];
+        for ($r = 0; $r < $size; $r++) {
+            $grid[$r] = [];
+            for ($c = 0; $c < $size; $c++) {
+                $grid[$r][$c] = '';
+            }
+        }
+        return $grid;
+    }
+
+    private function placeWord(array &$grid, string $word, bool $diagonals, bool $reverse): ?array
+    {
+        $word = strtoupper(trim($word));
+        $wordLen = strlen($word);
+        $gridSize = count($grid);
+
+        // Get available directions
+        $availableDirections = $this->getAvailableDirections($diagonals);
+        
+        // Try multiple starting positions and directions
+        $maxAttempts = $gridSize * $gridSize * count($availableDirections) * 2; // *2 for reverse
         $attempts = 0;
 
         while ($attempts < $maxAttempts) {
-            $direction = $this->getRandomDirection($options);
-            $reverse = $this->shouldReverse($options);
+            $attempts++;
             
-            $wordToPlace = $reverse ? strrev($word) : $word;
+            // Random starting position
+            $startR = mt_rand(0, $gridSize - 1);
+            $startC = mt_rand(0, $gridSize - 1);
             
-            $placement = $this->tryPlaceWord($wordToPlace, $direction);
-            if ($placement) {
-                $this->placedWords[] = [
+            // Random direction
+            $direction = $availableDirections[array_rand($availableDirections)];
+            
+            // Try both normal and reverse
+            $wordToPlace = $reverse && mt_rand(0, 1) ? strrev($word) : $word;
+            
+            if ($this->canPlaceWord($grid, $wordToPlace, $startR, $startC, $direction)) {
+                $this->placeWordInGrid($grid, $wordToPlace, $startR, $startC, $direction);
+                
+                return [
                     'word' => $word,
-                    'placed' => $wordToPlace,
+                    'placed_word' => $wordToPlace,
+                    'start' => [$startR, $startC],
+                    'end' => [
+                        $startR + ($direction[0] * ($wordLen - 1)),
+                        $startC + ($direction[1] * ($wordLen - 1))
+                    ],
                     'direction' => $direction,
-                    'reverse' => $reverse,
-                    'startRow' => $placement['startRow'],
-                    'startCol' => $placement['startCol'],
+                    'reversed' => $wordToPlace !== $word
                 ];
+            }
+        }
+
+        return null;
+    }
+
+    private function getAvailableDirections(bool $diagonals): array
+    {
+        $directions = [$this->directions['horizontal'], $this->directions['vertical']];
+        
+        if ($diagonals) {
+            $directions[] = $this->directions['diagonal_down'];
+            $directions[] = $this->directions['diagonal_up'];
+        }
+        
+        return $directions;
+    }
+
+    private function canPlaceWord(array $grid, string $word, int $startR, int $startC, array $direction): bool
+    {
+        $wordLen = strlen($word);
+        $gridSize = count($grid);
+
+        // Check if word fits within grid bounds
+        $endR = $startR + ($direction[0] * ($wordLen - 1));
+        $endC = $startC + ($direction[1] * ($wordLen - 1));
+
+        if ($endR < 0 || $endR >= $gridSize || $endC < 0 || $endC >= $gridSize) {
+            return false;
+        }
+
+        // Check if cells are available
+        for ($i = 0; $i < $wordLen; $i++) {
+            $r = $startR + ($direction[0] * $i);
+            $c = $startC + ($direction[1] * $i);
+            
+            $currentCell = $grid[$r][$c];
+            $wordChar = $word[$i];
+            
+            // Cell must be empty or contain the same letter
+            if ($currentCell !== '' && $currentCell !== $wordChar) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function placeWordInGrid(array &$grid, string $word, int $startR, int $startC, array $direction): void
+    {
+        $wordLen = strlen($word);
+        
+        for ($i = 0; $i < $wordLen; $i++) {
+            $r = $startR + ($direction[0] * $i);
+            $c = $startC + ($direction[1] * $i);
+            $grid[$r][$c] = $word[$i];
+        }
+    }
+
+    private function fillEmptyCells(array &$grid): void
+    {
+        $gridSize = count($grid);
+        
+        for ($r = 0; $r < $gridSize; $r++) {
+            for ($c = 0; $c < $gridSize; $c++) {
+                if ($grid[$r][$c] === '') {
+                    $grid[$r][$c] = $this->alphabet[mt_rand(0, strlen($this->alphabet) - 1)];
+                }
+            }
+        }
+    }
+
+    private function generatePuzzleId(): string
+    {
+        return 'puzzle_' . uniqid() . '_' . mt_rand(1000, 9999);
+    }
+
+    public function validateWordSelection(array $grid, array $selection, array $placedWords): bool
+    {
+        if (empty($selection) || count($selection) < 2) {
+            return false;
+        }
+
+        // Sort selection by row and column
+        usort($selection, function($a, $b) {
+            if ($a['r'] !== $b['r']) {
+                return $a['r'] - $b['r'];
+            }
+            return $a['c'] - $b['c'];
+        });
+
+        // Check if selection forms a straight line
+        if (!$this->isStraightLine($selection)) {
+            return false;
+        }
+
+        // Extract word from selection
+        $word = '';
+        foreach ($selection as $cell) {
+            $word .= $grid[$cell['r']][$cell['c']];
+        }
+
+        // Check if word exists in placed words
+        foreach ($placedWords as $placedWord) {
+            if ($placedWord['placed_word'] === $word || $placedWord['placed_word'] === strrev($word)) {
                 return true;
             }
-            
-            $attempts++;
         }
 
         return false;
     }
 
-    private function getRandomDirection(array $options): array
+    private function isStraightLine(array $selection): bool
     {
-        $availableDirections = ['horizontal', 'vertical'];
-        
-        if (($options['diagonals'] ?? false)) {
-            $availableDirections[] = 'diagonal_down';
-            $availableDirections[] = 'diagonal_up';
-        }
-        
-        $directionName = $availableDirections[array_rand($availableDirections)];
-        return $this->directions[$directionName];
-    }
-
-    private function shouldReverse(array $options): bool
-    {
-        if (!($options['reverse'] ?? false)) {
+        if (count($selection) < 2) {
             return false;
         }
-        
-        return (bool) mt_rand(0, 1);
-    }
 
-    private function tryPlaceWord(string $word, array $direction): array|false
-    {
-        $wordLen = strlen($word);
+        $first = $selection[0];
+        $last = $selection[count($selection) - 1];
         
-        // Create a scoring system to prefer positions that spread words out
-        $bestPosition = null;
-        $bestScore = -1;
+        $deltaR = $last['r'] - $first['r'];
+        $deltaC = $last['c'] - $first['c'];
         
-        // Try multiple random positions and score them
-        for ($attempt = 0; $attempt < 200; $attempt++) {
-            $startRow = mt_rand(0, $this->size - 1);
-            $startCol = mt_rand(0, $this->size - 1);
-            
-            if ($this->canPlaceWordAt($word, $startRow, $startCol, $direction)) {
-                $score = $this->calculatePlacementScore($word, $startRow, $startCol, $direction);
-                
-                if ($score > $bestScore) {
-                    $bestScore = $score;
-                    $bestPosition = ['startRow' => $startRow, 'startCol' => $startCol];
-                }
-            }
-        }
-        
-        // If we found a valid position, use it (don't require positive score)
-        if ($bestPosition) {
-            $this->placeWordAt($word, $bestPosition['startRow'], $bestPosition['startCol'], $direction);
-            return $bestPosition;
-        }
-        
-        // Fallback: try systematic placement with all directions
-        $allDirections = [
-            [0, 1],   // horizontal
-            [1, 0],   // vertical
-            [1, 1],   // diagonal down
-            [1, -1],  // diagonal up
-            [-1, 1],  // diagonal up-right
-            [-1, -1], // diagonal up-left
-        ];
-        
-        foreach ($allDirections as $dir) {
-            for ($row = 0; $row < $this->size; $row++) {
-                for ($col = 0; $col < $this->size; $col++) {
-                    if ($this->canPlaceWordAt($word, $row, $col, $dir)) {
-                        $this->placeWordAt($word, $row, $col, $dir);
-                        return ['startRow' => $row, 'startCol' => $col];
-                    }
-                }
-            }
+        // Check if it's horizontal, vertical, or diagonal
+        if ($deltaR === 0) {
+            // Horizontal
+            return $this->checkHorizontalLine($selection);
+        } elseif ($deltaC === 0) {
+            // Vertical
+            return $this->checkVerticalLine($selection);
+        } elseif (abs($deltaR) === abs($deltaC)) {
+            // Diagonal
+            return $this->checkDiagonalLine($selection);
         }
         
         return false;
     }
 
-    private function canPlaceWordAt(string $word, int $startRow, int $startCol, array $direction): bool
+    private function checkHorizontalLine(array $selection): bool
     {
-        $wordLen = strlen($word);
-        $dr = $direction[0];
-        $dc = $direction[1];
+        $row = $selection[0]['r'];
+        $cols = array_column($selection, 'c');
+        sort($cols);
         
-        // Check if word fits within bounds
-        $endRow = $startRow + ($dr * ($wordLen - 1));
-        $endCol = $startCol + ($dc * ($wordLen - 1));
-        
-        if ($endRow < 0 || $endRow >= $this->size || $endCol < 0 || $endCol >= $this->size) {
-            return false;
-        }
-        
-        // Check if cells are available or can overlap
-        for ($i = 0; $i < $wordLen; $i++) {
-            $row = $startRow + ($dr * $i);
-            $col = $startCol + ($dc * $i);
-            $cell = $this->grid[$row][$col];
-            $letter = $word[$i];
-            
-            if ($cell !== '' && $cell !== $letter) {
+        for ($i = 1; $i < count($cols); $i++) {
+            if ($cols[$i] !== $cols[$i-1] + 1) {
                 return false;
             }
         }
@@ -216,92 +292,43 @@ class PuzzleGenerator
         return true;
     }
 
-    private function placeWordAt(string $word, int $startRow, int $startCol, array $direction): void
+    private function checkVerticalLine(array $selection): bool
     {
-        $wordLen = strlen($word);
-        $dr = $direction[0];
-        $dc = $direction[1];
+        $col = $selection[0]['c'];
+        $rows = array_column($selection, 'r');
+        sort($rows);
         
-        for ($i = 0; $i < $wordLen; $i++) {
-            $row = $startRow + ($dr * $i);
-            $col = $startCol + ($dc * $i);
-            $this->grid[$row][$col] = $word[$i];
+        for ($i = 1; $i < count($rows); $i++) {
+            if ($rows[$i] !== $rows[$i-1] + 1) {
+                return false;
+            }
         }
+        
+        return true;
     }
 
-    private function fillEmptyCells(): void
+    private function checkDiagonalLine(array $selection): bool
     {
-        $alphabet = $this->config['game']['alphabet'];
+        $first = $selection[0];
+        $last = $selection[count($selection) - 1];
         
-        for ($row = 0; $row < $this->size; $row++) {
-            for ($col = 0; $col < $this->size; $col++) {
-                if ($this->grid[$row][$col] === '') {
-                    $this->grid[$row][$col] = $alphabet[array_rand($alphabet)];
-                }
+        $deltaR = $last['r'] - $first['r'];
+        $deltaC = $last['c'] - $first['c'];
+        
+        $stepR = $deltaR > 0 ? 1 : -1;
+        $stepC = $deltaC > 0 ? 1 : -1;
+        
+        $currentR = $first['r'];
+        $currentC = $first['c'];
+        
+        foreach ($selection as $cell) {
+            if ($cell['r'] !== $currentR || $cell['c'] !== $currentC) {
+                return false;
             }
+            $currentR += $stepR;
+            $currentC += $stepC;
         }
-    }
-    
-    private function calculatePlacementScore(string $word, int $startRow, int $startCol, array $direction): int
-    {
-        $score = 0;
-        $wordLen = strlen($word);
-        $dr = $direction[0];
-        $dc = $direction[1];
         
-        // Balanced distribution - don't heavily favor edges
-        $center = (int)($this->size / 2);
-        $distanceFromCenter = abs($startRow - $center) + abs($startCol - $center);
-        
-        // Prefer moderate distance from center (not too close, not too far)
-        $optimalDistance = (int)($this->size / 3); // Prefer positions around 1/3 from center
-        $distanceScore = -(int)abs($distanceFromCenter - $optimalDistance);
-        $score += $distanceScore;
-        
-        // Prefer positions that don't overlap with existing words
-        $overlapPenalty = 0;
-        for ($i = 0; $i < $wordLen; $i++) {
-            $row = $startRow + ($dr * $i);
-            $col = $startCol + ($dc * $i);
-            
-            if ($this->grid[$row][$col] !== '') {
-                $overlapPenalty += 5; // Heavy penalty for overlapping
-            }
-        }
-        $score -= $overlapPenalty;
-        
-        // Prefer positions that spread words across different quadrants
-        $quadrant = $this->getQuadrant($startRow, $startCol);
-        $quadrantCount = $this->countWordsInQuadrant($quadrant);
-        $score += (4 - $quadrantCount) * 3; // Prefer less crowded quadrants
-        
-        // Random factor to add variety (avoid predictable patterns)
-        $score += mt_rand(-5, 5);
-        
-        return $score;
-    }
-    
-    private function getQuadrant(int $row, int $col): int
-    {
-        $midRow = (int)($this->size / 2);
-        $midCol = (int)($this->size / 2);
-        
-        if ($row < $midRow) {
-            return $col < $midCol ? 0 : 1; // Top-left or Top-right
-        } else {
-            return $col < $midCol ? 2 : 3; // Bottom-left or Bottom-right
-        }
-    }
-    
-    private function countWordsInQuadrant(int $quadrant): int
-    {
-        $count = 0;
-        foreach ($this->placedWords as $placedWord) {
-            $wordQuadrant = $this->getQuadrant($placedWord['startRow'], $placedWord['startCol']);
-            if ($wordQuadrant === $quadrant) {
-                $count++;
-            }
-        }
-        return $count;
+        return true;
     }
 }

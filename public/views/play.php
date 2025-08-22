@@ -1,154 +1,157 @@
 <?php
-$title = 'Play - Word Search';
-ob_start();
-?>
+$pageTitle = 'Play Word Search - Word Search Game';
 
-<div class="container-fluid">
+// Get puzzle ID from URL parameter
+$puzzleId = $_GET['id'] ?? '';
+
+if (empty($puzzleId)) {
+    $pageContent = '
+    <div class="alert alert-danger">
+        <h4>No Puzzle Selected</h4>
+        <p>Please go back to the home page and start a new game.</p>
+        <a href="/" class="btn btn-primary">Go Home</a>
+    </div>';
+} else {
+    $pageContent = '
     <div class="row">
-        <!-- Game Grid -->
         <div class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h3 class="h5 mb-0">
-                        <i class="bi bi-grid-3x3"></i> Word Search Grid
-                    </h3>
-                    <div>
-                        <span class="badge bg-light text-dark me-2">
-                            <i class="bi bi-clock"></i> <span id="timer">00:00</span>
-                        </span>
-                        <span class="badge bg-light text-dark">
-                            <i class="bi bi-check-circle"></i> <span id="foundCount">0</span>/<span id="totalCount">0</span>
-                        </span>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="text-center mb-3">
-                        <div id="gameGrid" class="d-inline-block"></div>
-                    </div>
-                    <div class="text-center">
-                        <button class="btn btn-outline-primary me-2" id="hintBtn">
-                            <i class="bi bi-lightbulb"></i> Hint
-                        </button>
-                        <button class="btn btn-outline-secondary me-2" id="newGameBtn">
-                            <i class="bi bi-arrow-clockwise"></i> New Game
-                        </button>
-                        <button class="btn btn-outline-success" id="printBtn">
-                            <i class="bi bi-printer"></i> Print
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Word List and Controls -->
-        <div class="col-lg-4">
-            <!-- Word List -->
-            <div class="card shadow-sm mb-3">
+            <!-- Game Grid -->
+            <div class="card">
                 <div class="card-header bg-success text-white">
-                    <h4 class="h6 mb-0">
-                        <i class="bi bi-list-ul"></i> Find These Words
-                    </h4>
+                    <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Word Search Grid</h5>
                 </div>
-                <div class="card-body">
-                    <div id="wordList" class="row g-2"></div>
-                </div>
-            </div>
-
-            <!-- Game Info -->
-            <div class="card shadow-sm mb-3">
-                <div class="card-header bg-info text-white">
-                    <h4 class="h6 mb-0">
-                        <i class="bi bi-info-circle"></i> Game Information
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="mb-2">
-                        <strong>Difficulty:</strong> <span id="gameDifficulty">-</span>
-                    </div>
-                    <div class="mb-2">
-                        <strong>Grid Size:</strong> <span id="gameSize">-</span>×<span id="gameSize2">-</span>
-                    </div>
-                    <div class="mb-2">
-                        <strong>Theme:</strong> <span id="gameTheme">-</span>
-                    </div>
-                    <div class="mb-2">
-                        <strong>Share Link:</strong>
-                        <div class="input-group input-group-sm">
-                            <input type="text" class="form-control" id="shareLink" readonly>
-                            <button class="btn btn-outline-secondary" type="button" id="copyLink">
-                                <i class="bi bi-clipboard"></i>
-                            </button>
+                <div class="card-body text-center">
+                    <div id="gameGrid" class="mb-3">
+                        <!-- Grid will be loaded here -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-3">Loading puzzle...</p>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Instructions -->
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h4 class="h6 mb-0">
-                        <i class="bi bi-question-circle"></i> How to Play
-                    </h4>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="game-controls">
+                <!-- Timer -->
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Timer</h6>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="timer" id="gameTimer">00:00</div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <p class="small mb-2">
-                        <strong>Mouse/Touch:</strong> Click and drag to select letters
-                    </p>
-                    <p class="small mb-2">
-                        <strong>Goal:</strong> Find all words in the list
-                    </p>
-                    <p class="small mb-0">
-                        <strong>Words can be:</strong> Horizontal, vertical, or diagonal
-                    </p>
+                
+                <!-- Progress -->
+                <div class="card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Progress</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" id="progressBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted">
+                            <span id="wordsFound">0</span> of <span id="totalWords">0</span> words found
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- Word List -->
+                <div class="card mb-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Find These Words</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="word-list" id="wordList">
+                            <!-- Words will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Game Controls -->
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h6 class="mb-0"><i class="bi bi-controller me-2"></i>Controls</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" id="hintBtn">
+                                <i class="bi bi-lightbulb me-2"></i>Hint
+                            </button>
+                            <button class="btn btn-outline-warning" id="resetBtn">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Reset Selection
+                            </button>
+                            <button class="btn btn-outline-info" id="showSolutionBtn">
+                                <i class="bi bi-eye me-2"></i>Show Solution
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Game Actions -->
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Actions</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success" id="newGameBtn">
+                                <i class="bi bi-plus-circle me-2"></i>New Game
+                            </button>
+                            <a href="/" class="btn btn-outline-secondary">
+                                <i class="bi bi-house me-2"></i>Home
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Win Modal -->
-<div class="modal fade" id="winModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-trophy"></i> Congratulations!
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <h4 class="text-success mb-3">You've completed the puzzle!</h4>
-                <p class="mb-3">
-                    <strong>Time:</strong> <span id="finalTime">-</span><br>
-                    <strong>Words Found:</strong> <span id="finalWords">-</span>
-                </p>
-                <div class="alert alert-info">
-                    <i class="bi bi-share"></i> Share this puzzle with friends using the link above!
+    
+    <!-- Game Completion Modal -->
+    <div class="modal fade" id="completionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-trophy me-2"></i>Congratulations!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-success" id="playAgain">Play Again</button>
+                <div class="modal-body">
+                    <p>You completed the puzzle!</p>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h6>Time</h6>
+                            <p class="h4 text-success" id="completionTime">00:00</p>
+                        </div>
+                        <div class="col-6">
+                            <h6>Hints Used</h6>
+                            <p class="h4 text-warning" id="hintsUsed">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="playAgainBtn">Play Again</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+    
+    <!-- Hidden puzzle data will be set after layout loads -->';
+}
 
-<!-- Loading Modal -->
-<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content">
-            <div class="modal-body text-center py-4">
-                <div class="spinner-border text-primary mb-3" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mb-0">Generating your puzzle...</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/layout.php';
+include 'layout.php';
 ?>
+
+<!-- Set puzzle ID and load game JavaScript after jQuery is available -->
+<script>
+    window.puzzleId = "<?= htmlspecialchars($puzzleId) ?>";
+</script>
+<script src="/assets/js/game.js"></script>

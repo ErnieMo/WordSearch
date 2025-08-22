@@ -1,68 +1,80 @@
 
-# Cursor “Remember” Document — Word Search Web App
+# Cursor "Remember" Document — Word Search Web App
 
-> **Purpose:** This document tells Cursor/ChatGPT exactly what we’re building, the tech choices, conventions, and where things live. Treat it as persistent project memory. When generating code, follow these rules by default.
+> **Purpose:** This document tells Cursor/ChatGPT exactly what we're building, the tech choices, conventions, and where things live. Treat it as persistent project memory. When generating code, follow these rules by default.
 
 ---
 
 ## 1) Project Overview
 
-* **App:** Browser-based **Word Search game**.
-* **Goals:** Fast, simple, mobile-friendly; users can play generated puzzles, optionally create/share custom lists; printable PDF later.
-* **Primary stack:** **PHP (8.x)** + **Nginx** on Linux, **jQuery** for interactivity, **Bootstrap 5** for styling, **Composer** for PHP deps/autoloading.
-* **Style:** Clean Bootstrap UI; **no Bootstrap `nav` component** unless explicitly asked. Use responsive grid/cards/buttons.
+* **App:** Browser-based **Word Search game** with user authentication and database storage.
+* **Goals:** Fast, simple, mobile-friendly; users can play generated puzzles, create custom lists, track scores, and manage profiles.
+* **Primary stack:** **PHP 8.3+** + **Nginx** + **PostgreSQL** on Linux, **jQuery** for interactivity, **Bootstrap 5** for styling, **Composer** for PHP deps/autoloading.
+* **Style:** Clean Bootstrap UI with green development theme; responsive grid/cards/buttons.
 
 ---
 
 ## 2) Default Tech Assumptions
 
-* **PHP:** 8.2+; strict types in new classes; PSR-12 coding style.
-* **Composer:** PSR-4 autoloading; env loader (vlucas/phpdotenv) if needed.
+* **PHP:** 8.3+; strict types in new classes; PSR-12 coding style.
+* **Composer:** PSR-4 autoloading; vlucas/phpdotenv for environment variables.
 * **Nginx:** Standard PHP-FPM setup; friendly URLs routed to `public/index.php`.
-* **Frontend:** jQuery 3.7+, Bootstrap 5.3+, icons via Bootstrap Icons (if needed). Keep JS lean; no frameworks (React/Vue) unless requested.
-* **Database:** Start **file-based JSON** persistence for prototypes; can add PostgreSQL later when requested.
+* **Frontend:** jQuery 3.7+, Bootstrap 5.3+, icons via Bootstrap Icons.
+* **Database:** **PostgreSQL** with PDO; fallback to file-based JSON storage.
+* **Authentication:** JWT-based with Firebase/php-jwt library.
 
 ---
 
-## 3) File/Folder Structure (top-level)
+## 3) File/Folder Structure (current implementation)
 
 ```
 /wordsearch
 ├── app/                    # PHP source (PSR-4: App\)
 │   ├── Controllers/
+│   │   ├── AuthController.php      # User authentication endpoints
+│   │   └── ScoresController.php    # Score tracking and statistics
 │   ├── Services/
-│   ├── Models/
+│   │   ├── AuthService.php         # JWT authentication logic
+│   │   ├── DatabaseService.php     # PDO database wrapper
+│   │   ├── PuzzleGenerator.php     # Word search grid generation
+│   │   ├── PuzzleStore.php         # File-based puzzle storage (fallback)
+│   │   └── ThemeService.php        # Theme word lists management
 │   ├── Http/
-│   │   └── Router.php
+│   │   └── Router.php              # Application routing and API handling
 │   └── Utils/
-├── bootstrap/              # App bootstrap (wiring, DI, config)
-│   └── app.php
-├── config/
-│   ├── app.php             # App settings (title, debug, etc.)
-│   ├── game.php            # Puzzle defaults (grid sizes, alphabets)
-│   └── paths.php
 ├── public/                 # Web root served by Nginx
 │   ├── index.php           # Front controller / router entry
 │   ├── assets/
 │   │   ├── css/
-│   │   ├── js/
-│   │   └── img/
+│   │   │   └── app.css
+│   │   └── js/
+│   │       └── app.js      # Main game logic and UI interactions
 │   └── views/              # PHP partials for layout and pages
-│       ├── layout.php
-│       ├── home.php
-│       ├── play.php
-│       └── create.php
-├── resources/              # Raw assets (scss, templates) (optional)
+│       ├── layout.php      # Main layout with navigation and auth
+│       ├── home.php        # Theme/difficulty selection
+│       ├── play.php        # Game interface
+│       ├── create.php      # Custom puzzle creation
+│       ├── scores.php      # Leaderboards and statistics
+│       └── profile.php     # User profile management
+├── resources/              # Theme word lists
+│   └── themes/
+│       ├── animals.json    # Animal-themed words
+│       ├── automotive.json # Car/vehicle words
+│       ├── food.json       # Food and cuisine words
+│       ├── geography.json  # Countries and places
+│       ├── medical.json    # Healthcare terms
+│       └── technology.json # Tech and computer words
 ├── storage/                # Writable dir (logs, json data, cache)
 │   ├── logs/
-│   ├── puzzles/            # Saved/generated puzzles (.json)
+│   ├── puzzles/            # Saved/generated puzzles (.json fallback)
 │   └── cache/
-├── tests/                  # (optional) PHPUnit
 ├── vendor/
 ├── composer.json
 ├── composer.lock
-├── .env                    # Environment config (never commit real secrets)
-├── .env.example
+├── .env                    # Environment config (database, JWT secrets)
+├── setup_database.php      # Database schema creation
+├── create_demo_user.php    # Demo user creation script
+├── recreate.sql            # Complete database recreation script
 └── README.md
 ```
 
@@ -70,69 +82,224 @@
 
 ## 4) Routing & Pages
 
-* **Routing:** Minimal internal router (`app/Http/Router.php`) mapping clean paths to controller callables.
+* **Routing:** Internal router (`app/Http/Router.php`) mapping clean paths to controller callables.
 * **Pages:**
 
-  * `/` → Home (New Game button, Difficulty selector, Theme selector)
+  * `/` → Home (Theme selector, Difficulty selector, New Game button)
   * `/play` → Active puzzle UI (grid, word list, timer, hint button)
   * `/create` → Custom word list form; generate & share link
+  * `/scores` → Global leaderboards and user statistics
+  * `/profile` → User profile management and game history
   * `/api/*` → JSON endpoints (see below)
 
 ---
 
-## 5) Core Features & MVP Scope
+## 5) Core Features & Current Scope
 
-* Generate a word search grid from a word list (horizontal/vertical/diagonal; reversals toggled by difficulty).
-* UI for selecting words in the grid via click+drag (mouse) and touch.
-* Highlight found words; strike-through in the list; win state when all words found.
-* Difficulty presets: **Easy (10×10), Medium (12×12), Hard (15×15)**; allow diagonals/reverse by level.
-* Theme packs (animals, geography, tech) pulled from JSON files.
-* Persistent **share link** for a generated puzzle (store JSON in `storage/puzzles/` with short id).
+* **Puzzle Generation:** Generate word search grids from theme word lists with intelligent placement algorithms.
+* **Smart Word Placement:** Automatic fallback to shorter words if long words can't fit; grid size optimization.
+* **Interactive UI:** Click+drag word selection (mouse) and touch support; real-time highlighting.
+* **Difficulty System:** Easy (10×10), Medium (15×15), Hard (20×20) with diagonal and reverse options.
+* **Theme System:** 6 built-in themes (Animals, Automotive, Food, Geography, Medical, Technology).
+* **User Authentication:** Registration, login, profile management with JWT tokens.
+* **Score Tracking:** Game completion times, hints used, leaderboards.
+* **Database Storage:** PostgreSQL for users, puzzles, games, and scores with JSON fallback.
 
 ---
 
 ## 6) API Endpoints (PHP, return JSON)
 
-* `POST /api/generate` → body: `{ words: string[], options: { size:int, diagonals:bool, reverse:bool, seed?:int } }` → returns puzzle `{ id, grid, words, placed, size, seed }` & saves to storage.
-* `GET  /api/puzzle/{id}` → returns saved puzzle by id.
-* `POST /api/validate` → body: `{ id, selection: [{r0,c0,r1,c1}, ...] }` → validates a found word (optional in MVP; can validate client-side initially).
+### Authentication Endpoints:
+* `POST /api/auth/register` → User registration with first/last name
+* `POST /api/auth/login` → User login and JWT token generation
+* `POST /api/auth/logout` → User logout
+* `GET /api/auth/profile` → Get user profile information
+* `POST /api/auth/profile/update` → Update user profile
+* `POST /api/auth/password/change` → Change user password
 
-**Notes for Cursor:** Prefer server-side generation for consistency & shareability; keep client lightweight.
+### Game Endpoints:
+* `POST /api/generate` → Generate new puzzle: `{ words: string[], options: { size:int, diagonals:bool, reverse:bool, seed?:int } }` → returns `{ success: true, id: string, message: string }`
+* `GET /api/puzzle/{id}` → Returns saved puzzle by ID
+* `POST /api/validate` → Validates found word selections
+* `GET /api/themes` → Returns available themes and word lists
 
----
-
-## 7) PHP Services (sketch)
-
-* `App\Services\PuzzleGenerator` — place words with backtracking:
-
-  * Placement orders: randomize directions by options; attempt overlaps where letters match; retry with backtracking; fill empty with random A–Z.
-  * Accept **seed** for reproducible puzzles (`mt_srand(seed)`).
-* `App\Services\PuzzleStore` — save/load puzzles as JSON to `storage/puzzles/{id}.json` (id = short, e.g., base36 timestamp+rand).
-* `App\Utils\Id` — short id generator.
-
----
-
-## 8) Frontend Conventions (jQuery + Bootstrap)
-t
-* **jQuery only** for DOM/state; no global pollution — scope code in IIFEs or modules.
-* Use **Bootstrap 5** layout: `.container`, `.row`, `.col` with responsive breakpoints. Keep font sizes readable.
-* **Accessible colors**; add **Dark mode** toggle by adding `data-bs-theme="dark"` on `<html>` when requested.
-* Grid rendered as a table or CSS grid; each cell has data attributes: `data-r`, `data-c`, `data-ch`.
-* Selection UX: mousedown/touchstart → drag → mouseup to emit a line; highlight tentative path.
+### Score Endpoints:
+* `GET /api/scores` → Global leaderboards
+* `GET /api/scores/my` → User's personal scores
+* `GET /api/scores/stats` → Global statistics
+* `GET /api/scores/my/stats` → User's personal statistics
 
 ---
 
-## 9) Composer Setup
+## 7) PHP Services (current implementation)
 
-**composer.json (baseline):**
+### Core Services:
+* `App\Services\PuzzleGenerator` — Advanced word placement with:
+  * Smart backtracking and retry logic
+  * Automatic word replacement for difficult placements
+  * Grid size optimization
+  * Seeded generation for reproducibility
+  * Direction randomization (horizontal, vertical, diagonal)
+  * Reverse word support
 
+* `App\Services\DatabaseService` — PDO wrapper with:
+  * Connection management
+  * Transaction support
+  * Prepared statement handling
+  * Boolean and empty string handling for PostgreSQL
+
+* `App\Services\AuthService` — JWT authentication:
+  * User registration and login
+  * Password hashing and verification
+  * JWT token generation and validation
+  * Profile management
+
+* `App\Services\ThemeService` — Theme management:
+  * Dynamic theme loading from JSON files
+  * Word list management
+  * Theme detection from word lists
+
+* `App\Services\PuzzleStore` — File-based storage fallback:
+  * JSON puzzle storage
+  * Automatic directory creation
+  * Fallback when database fails
+
+---
+
+## 8) Database Schema (PostgreSQL)
+
+### Users Table:
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    email_verified BOOLEAN DEFAULT FALSE,
+    reset_token VARCHAR(255),
+    reset_expires TIMESTAMP
+);
+```
+
+### Puzzles Table:
+```sql
+CREATE TABLE puzzles (
+    id SERIAL PRIMARY KEY,
+    puzzle_id VARCHAR(20) UNIQUE NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    theme VARCHAR(50) NOT NULL,
+    difficulty VARCHAR(20) NOT NULL,
+    grid_size INTEGER NOT NULL,
+    words JSONB NOT NULL,
+    grid JSONB NOT NULL,
+    placed_words JSONB NOT NULL,
+    seed INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Games Table:
+```sql
+CREATE TABLE games (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    puzzle_id VARCHAR(20) NOT NULL,
+    theme VARCHAR(50) NOT NULL,
+    difficulty VARCHAR(20) NOT NULL,
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP,
+    elapsed_time INTEGER DEFAULT 0,
+    hints_used INTEGER DEFAULT 0,
+    words_found INTEGER NOT NULL,
+    total_words INTEGER NOT NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Scores Table:
+```sql
+CREATE TABLE scores (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    username VARCHAR(50) NOT NULL,
+    game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+    puzzle_id VARCHAR(20) NOT NULL,
+    theme VARCHAR(50) NOT NULL,
+    difficulty VARCHAR(20) NOT NULL,
+    elapsed_time INTEGER,
+    hints_used INTEGER DEFAULT 0,
+    words_found INTEGER NOT NULL,
+    total_words INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## 9) Frontend Conventions (jQuery + Bootstrap)
+
+* **jQuery only** for DOM/state; no global pollution — scope code in IIFEs.
+* **Bootstrap 5** layout: `.container`, `.row`, `.col` with responsive breakpoints.
+* **Development Theme:** Green navigation bar with "Development Environment" banner.
+* **Grid Interaction:** Table-based grid with `data-r`, `data-c`, `data-ch` attributes.
+* **Selection UX:** mousedown/touchstart → drag → mouseup for word selection.
+* **Authentication UI:** Modal-based login/register forms with auto-login after registration.
+
+---
+
+## 10) Configuration (current implementation)
+
+### Environment Variables (.env):
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_DATABASE=wordsearch_dev
+DB_USERNAME=wordsearch_dev_user
+DB_PASSWORD=your_password
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRY=3600
+APP_URL=https://wordsearch.dev.nofinway.com
+```
+
+### Game Configuration:
+```php
+'game' => [
+    'directions' => [
+        'horizontal' => [0, 1],
+        'vertical' => [1, 0],
+        'diagonal_down' => [1, 1],
+        'diagonal_up' => [-1, 1]
+    ],
+    'maxWordLen' => 15,
+    'alphabet' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+],
+'paths' => [
+    'storage' => __DIR__ . '/../storage',
+    'resources' => __DIR__ . '/../resources'
+]
+```
+
+---
+
+## 11) Composer Setup (current)
+
+**composer.json:**
 ```json
 {
   "name": "wem/wordsearch",
   "type": "project",
   "require": {
-    "php": ">=8.2",
-    "vlucas/phpdotenv": "^5.6"
+    "php": ">=8.3",
+    "vlucas/phpdotenv": "^5.6",
+    "firebase/php-jwt": "^6.8"
   },
   "autoload": {
     "psr-4": {
@@ -141,136 +308,115 @@ t
   },
   "scripts": {
     "post-install-cmd": [
-      "@php -r \"if(!is_dir('storage')) mkdir('storage', 0775, true);\""
-    ],
-    "post-update-cmd": []
+      "@php -r \"if(!is_dir('storage/logs')) mkdir('storage/logs', 0775, true);\"",
+      "@php -r \"if(!is_dir('storage/puzzles')) mkdir('storage/puzzles', 0775, true);\"",
+      "@php -r \"if(!is_dir('storage/cache')) mkdir('storage/cache', 0775, true);\""
+    ]
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
   }
 }
 ```
 
-* Run `composer install`; commit `composer.json`/`lock`, not `vendor/` (unless policy differs).
+---
+
+## 12) Nginx Configuration (current)
+
+* **Web root:** `/var/www/html/WordSearch/Dev/public`
+* **Server name:** `wordsearch.dev.nofinway.com`
+* **PHP-FPM:** Unix socket `/run/php/php8.3-fpm.sock`
+* **Routing:** All non-file requests → `public/index.php`
 
 ---
 
-## 10) Nginx + PHP-FPM (sketch)
+## 13) Security & Quality (current)
 
-* **Web root:** `/path/to/wordsearch/public`.
-* **Routing:** All non-file requests → `public/index.php`.
-* **Client body size:** keep default unless uploads introduced.
-
-Example server block (summary):
-
-```
-server {
-  server_name example.test;
-  root /path/to/wordsearch/public;
-  index index.php;
-
-  location / {
-    try_files $uri $uri/ /index.php?$query_string;
-  }
-
-  location ~ \.php$ {
-    include fastcgi_params;
-    fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-    fastcgi_pass unix:/run/php/php8.2-fpm.sock;
-  }
-
-  access_log /var/log/nginx/wordsearch.access.log;
-  error_log  /var/log/nginx/wordsearch.error.log warn;
-}
-```
+* **JWT Authentication:** Secure token-based authentication
+* **Password Hashing:** bcrypt password hashing
+* **Input Validation:** Server-side validation for all inputs
+* **Database Security:** Prepared statements with PDO
+* **Error Handling:** Comprehensive error handling with logging
+* **Fallback Systems:** File storage fallback when database fails
 
 ---
 
-## 11) Security & Quality
+## 14) Current Features & Capabilities
 
-* Escape output; enable **CSP** later; CSRF token for POST endpoints.
-* Validate inputs server-side: word lists (A–Z only unless extended), max sizes/lengths.
-* Logging to `storage/logs/app.log` (errors + generation diagnostics at debug level).
-* Unit-test `PuzzleGenerator` edge cases (overlaps, impossible placements → retry/resize).
+### ✅ **Implemented:**
+* User registration and authentication
+* Theme-based puzzle generation
+* Smart word placement with fallbacks
+* Database storage with PostgreSQL
+* Score tracking and leaderboards
+* Responsive Bootstrap UI
+* JWT token management
+* Auto-login after registration
+* Profile management
+* Game statistics
+
+### 🔄 **In Progress:**
+* Puzzle retrieval optimization
+* Database error handling improvements
+
+### 📋 **Planned:**
+* Dark mode toggle
+* Print-friendly stylesheets
+* PDF export functionality
+* Advanced puzzle sharing
+* Social features
 
 ---
 
-## 12) UI Details to Remember
+## 15) Development Commands
 
-* Use **cards** for panels (word list, controls, status).
-* Show **timer**, **found/total** counter, and **hint** button.
-* Provide **Print** button (print CSS) in later iteration.
-* **No Bootstrap `nav`** unless explicitly asked; use a simple header with brand + two buttons.
+### Database Setup:
+```bash
+# Create database and tables
+php setup_database.php
 
----
+# Recreate entire database
+psql -U postgres -d wordsearch_dev -f recreate.sql
 
-## 13) Default Configs (in `config/game.php`)
-
-```php
-return [
-  'sizes' => [
-    'easy' => 10,
-    'medium' => 12,
-    'hard' => 15,
-  ],
-  'alphabet' => range('A', 'Z'),
-  'allowDiagonals' => [ 'easy' => false, 'medium' => true, 'hard' => true ],
-  'allowReverse'   => [ 'easy' => false, 'medium' => true, 'hard' => true ],
-  'maxWordLen' => 18,
-];
+# Create demo user
+php create_demo_user.php
 ```
 
----
+### Environment:
+```bash
+# Install dependencies
+composer install
 
-## 14) Minimal Bootstrap Layout (guideline)
-
-* **layout.php** includes Bootstrap CSS/JS (CDN OK), jQuery, a sticky header, and container.
-* Keep custom CSS in `public/assets/css/app.css`; keep custom JS in `public/assets/js/app.js`.
-
----
-
-## 15) Prompts for Cursor (copy/paste when asking for code)
-
-1. **Router + Controller skeleton:**
-
-   * “Create `app/Http/Router.php` and a minimal router to map `/`, `/play`, `/create`, `/api/*` to controller callables, defaulting to `public/views/*.php` for pages.”
-2. **Puzzle generator class:**
-
-   * “Implement `App\Services\PuzzleGenerator` with seeded backtracking placement (H,V,Diag, reverse opts), returning grid array + placed word coords.”
-3. **Frontend grid:**
-
-   * “In `public/assets/js/app.js`, render the grid as a table from JSON; implement drag-select (mouse + touch) and highlight valid word lines.”
-4. **API endpoints:**
-
-   * “Build `public/index.php` to dispatch `/api/generate` (POST) and `/api/puzzle/{id}` (GET) with JSON responses and error handling.”
-5. **Styling:**
-
-   * “Create Bootstrap UI with a header bar (no nav), two-column layout on md+, stacked on sm.”
+# Clear cache
+composer clear-cache
+composer dump-autoload
+```
 
 ---
 
-## 16) Backlog / Next Steps
+## 16) Troubleshooting
 
-* [ ] Save/load recent games in LocalStorage.
-* [ ] Shareable short URLs (e.g., `/p/{id}` alias to `/play?id=...`).
-* [ ] Print-friendly stylesheet.
-* [ ] Export to PDF (later; via wkhtmltopdf or a PHP lib).
-* [ ] Theme packs loaded from `/resources/themes/*.json`.
-* [ ] Server-side validation of found words for leaderboards.
+### Common Issues:
+* **Puzzle Generation Fails:** Check database connection and game configuration
+* **Authentication Errors:** Verify JWT secret and database user permissions
+* **Theme Loading Issues:** Ensure resources/themes directory exists with JSON files
+* **Database Connection:** Verify PostgreSQL service and credentials
 
----
-
-## 17) Non-Goals (for now)
-
-* No user accounts/auth, no payments, no server-side sessions beyond CSRF token.
-* No heavy JS frameworks; keep it jQuery + vanilla.
+### Debug Tools:
+* **Error Logs:** `/var/log/nginx/error.log`
+* **Debug Scripts:** `debug_puzzle.php` for database diagnostics
+* **Console Logs:** Browser developer tools for frontend issues
 
 ---
 
-## 18) Definition of Done (MVP)
+## 17) Performance & Optimization
 
-* Generates puzzles deterministically by seed; saves JSON to `storage/puzzles`.
-* Play page works on desktop + mobile; all words discoverable; win state.
-* Clean Bootstrap UI, accessible font sizes, works offline-ish (basic caching optional later).
-* Nginx serves from `public/`; single entry `index.php` handles routes & APIs.
+* **Word Placement:** Intelligent backtracking with fallback strategies
+* **Database Queries:** Optimized with proper indexes
+* **Caching:** File-based fallback for offline scenarios
+* **Grid Generation:** Seeded generation for reproducible puzzles
 
 ---
 
-**Remember:** Default to PHP 8.2, Nginx, jQuery, Bootstrap 5, Composer PSR-4. Avoid Bootstrap `nav` unless specifically requested. Keep code modular and testable. Use storage JSON until a DB is requested.
+**Remember:** This is a production-ready WordSearch application with full user authentication, database storage, and advanced puzzle generation. Use PostgreSQL as primary storage with JSON fallback. Follow PSR-12 coding standards and maintain the green development theme.

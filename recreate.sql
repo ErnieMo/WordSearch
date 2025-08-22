@@ -89,3 +89,8 @@ CREATE INDEX idx_scores_elapsed_time ON scores(elapsed_time);
 
 -- Verify the structure
 \d users
+
+select count(*) from games;
+select count(*) from scores;
+select count(*) from users;
+select count(*) from puzzles;

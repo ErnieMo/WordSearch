@@ -1,22 +1,39 @@
-<?php
-$appUrl = $_ENV['APP_URL'] ?? 'http://localhost:8000';
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word Search Game</title>
+    <title><?= $pageTitle ?? 'Word Search Game' ?></title>
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="<?php echo $appUrl; ?>/assets/css/app.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="/assets/css/app.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Development Environment Banner -->
+    <div class="alert alert-warning alert-dismissible fade show m-0 text-center" role="alert">
+        <strong>Development Environment</strong> - This is a development build of the Word Search application.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="<?php echo $appUrl; ?>/">
-                <i class="bi bi-search me-2"></i>WordSearch
+            <a class="navbar-brand fw-bold" href="/">
+                <i class="bi bi-search-heart me-2"></i>
+                Word Search
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -26,162 +43,138 @@ $appUrl = $_ENV['APP_URL'] ?? 'http://localhost:8000';
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $appUrl; ?>/">
-                            <i class="bi bi-house me-1"></i>Home
-                        </a>
+                        <a class="nav-link" href="/"><i class="bi bi-house me-1"></i>Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $appUrl; ?>/create">
-                            <i class="bi bi-plus-circle me-1"></i>Create
-                        </a>
+                        <a class="nav-link" href="/play"><i class="bi bi-play-circle me-1"></i>Play</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $appUrl; ?>/scores">
-                            <i class="bi bi-trophy me-1"></i>Scores
-                        </a>
+                        <a class="nav-link" href="/create"><i class="bi bi-plus-circle me-1"></i>Create</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $appUrl; ?>/profile">
-                            <i class="bi bi-person me-1"></i>Profile
-                        </a>
+                        <a class="nav-link" href="/scores"><i class="bi bi-trophy me-1"></i>Scores</a>
                     </li>
                 </ul>
                 
-                <ul class="navbar-nav">
-                    <li class="nav-item" id="authSection">
-                        <!-- Auth section will be populated by JavaScript -->
+                <ul class="navbar-nav" id="authNav">
+                    <!-- Guest Navigation -->
+                    <li class="nav-item" id="guestNav">
+                        <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#loginModal">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                        </button>
+                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#registerModal">
+                            <i class="bi bi-person-plus me-1"></i>Register
+                        </button>
+                    </li>
+                    
+                    <!-- Authenticated Navigation -->
+                    <li class="nav-item dropdown d-none" id="userNav">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>
+                            <span id="userDisplayName">User</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Development Environment Banner -->
-    <div class="alert alert-success text-center mb-0 py-2" role="alert">
-        <i class="bi bi-code-slash me-2"></i>
-        <strong>Development Environment</strong> - This is a development build of WordSearch
-    </div>
-
     <!-- Main Content -->
-    <main class="container-fluid py-4">
-        <?= $content ?? '' ?>
+    <main class="container my-4">
+        <?php if (isset($pageContent)): ?>
+            <?= $pageContent ?>
+        <?php endif; ?>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-light text-center py-3 mt-5">
-        <div class="container">
-            <p class="mb-0">&copy; 2025 Word Search. Built with Bootstrap 5 & jQuery.</p>
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2024 Word Search Game. Built with PHP, Bootstrap, and jQuery.</p>
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-box-arrow-in-right me-2"></i>Login</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="loginUsername" class="form-label">Username or Email</label>
+                            <input type="text" class="form-control" id="loginUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="loginPassword" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal fade" id="registerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Register</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="registerForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="registerFirstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="registerFirstName" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="registerLastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="registerLastName" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="registerUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="registerEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="registerPassword" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-person-plus me-2"></i>Register
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- Custom JS -->
-    <script src="<?php echo $appUrl; ?>/assets/js/app.js"></script>
-    
-    <script>
-        // Auth state management
-        function updateAuthSection() {
-            const token = getCookie('auth_token');
-            const authSection = document.getElementById('authSection');
-            
-            if (token) {
-                // User is logged in - fetch profile to get full name
-                fetch('/api/auth/profile', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const fullName = `${data.data.first_name} ${data.data.last_name}`;
-                        authSection.innerHTML = `
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle me-1"></i>${fullName}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/profile">
-                                        <i class="bi bi-person me-2"></i>My Profile
-                                    </a></li>
-                                    <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/scores">
-                                        <i class="bi bi-trophy me-2"></i>My Scores
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="#" onclick="logout()">
-                                        <i class="bi bi-box-arrow-right me-2"></i>Logout
-                                    </a></li>
-                                </ul>
-                            </li>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching profile:', error);
-                    // Fallback to generic display
-                    authSection.innerHTML = `
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle me-1"></i>Account
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/profile">
-                                    <i class="bi bi-person me-2"></i>My Profile
-                                </a></li>
-                                <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/scores">
-                                    <i class="bi bi-trophy me-2"></i>My Scores
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#" onclick="logout()">
-                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
-                                </a></li>
-                            </ul>
-                        </li>
-                    `;
-                });
-            } else {
-                // User is not logged in
-                authSection.innerHTML = `
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#loginModal">
-                            <i class="bi bi-box-arrow-in-right me-1"></i>Login
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#registerModal">
-                            <i class="bi bi-person-plus me-1"></i>Register
-                        </a>
-                    </li>
-                `;
-            }
-        }
-
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-        }
-
-        function logout() {
-            fetch('/api/auth/logout', {
-                method: 'POST',
-                credentials: 'include'
-            })
-            .then(() => {
-                document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                updateAuthSection();
-                window.location.href = '/';
-            })
-            .catch(error => {
-                console.error('Logout error:', error);
-            });
-        }
-
-        // Initialize auth section on page load
-        document.addEventListener('DOMContentLoaded', updateAuthSection);
-    </script>
+    <script src="/assets/js/app.js"></script>
 </body>
 </html>

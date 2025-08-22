@@ -6,198 +6,135 @@ namespace App\Services;
 
 use PDO;
 use PDOException;
-use Exception;
+use PDOStatement;
 
 class DatabaseService
 {
-    private PDO $pdo;
+    private ?PDO $connection = null;
     private array $config;
 
-    public function __construct(array $config)
+    public function __construct()
     {
-        $this->config = $config;
-        $this->connect();
-    }
-
-    private function connect(): void
-    {
-        try {
-            $dsn = "pgsql:host={$this->config['DB_HOST']};port={$this->config['DB_PORT']};dbname={$this->config['DB_DATABASE']}";
-            
-            $this->pdo = new PDO($dsn, $this->config['DB_USERNAME'], $this->config['DB_PASSWORD'], [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]);
-            
-        } catch (PDOException $e) {
-            throw new Exception("Database connection failed: " . $e->getMessage());
-        }
+        $this->config = [
+            'host' => $_ENV['DB_HOST'] ?? 'localhost',
+            'port' => $_ENV['DB_PORT'] ?? '5432',
+            'database' => $_ENV['DB_DATABASE'] ?? 'wordsearch_dev',
+            'username' => $_ENV['DB_USERNAME'] ?? 'wordsearch_dev_user',
+            'password' => $_ENV['DB_PASSWORD'] ?? 'your_password'
+        ];
     }
 
     public function getConnection(): PDO
     {
-        return $this->pdo;
-    }
-
-    public function beginTransaction(): bool
-    {
-        return $this->pdo->beginTransaction();
-    }
-
-    public function commit(): bool
-    {
-        return $this->pdo->commit();
-    }
-
-    public function rollback(): bool
-    {
-        return $this->pdo->rollback();
-    }
-
-    public function query(string $sql, array $params = []): array
-    {
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($params);
-            return $stmt->fetchAll();
-        } catch (PDOException $e) {
-            throw new Exception("Query failed: " . $e->getMessage());
+        if ($this->connection === null) {
+            try {
+                $dsn = "pgsql:host={$this->config['host']};port={$this->config['port']};dbname={$this->config['database']}";
+                $this->connection = new PDO($dsn, $this->config['username'], $this->config['password'], [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false
+                ]);
+            } catch (PDOException $e) {
+                throw new \RuntimeException("Database connection failed: " . $e->getMessage());
+            }
         }
+        return $this->connection;
     }
 
-    public function execute(string $sql, array $params = []): int
+    public function query(string $sql, array $params = []): PDOStatement
     {
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($params);
-            return $stmt->rowCount();
-        } catch (PDOException $e) {
-            throw new Exception("Execute failed: " . $e->getMessage());
-        }
+        $stmt = $this->getConnection()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
+    }
+
+    public function fetchOne(string $sql, array $params = []): ?array
+    {
+        $stmt = $this->query($sql, $params);
+        $result = $stmt->fetch();
+        return $result ?: null;
+    }
+
+    public function fetchAll(string $sql, array $params = []): array
+    {
+        $stmt = $this->query($sql, $params);
+        return $stmt->fetchAll();
     }
 
     public function insert(string $table, array $data): int
     {
-        // Clean the data to ensure proper types
-        $cleanData = [];
-        foreach ($data as $key => $value) {
-            if (is_bool($value)) {
-                $cleanData[$key] = $value ? 't' : 'f'; // PostgreSQL boolean format
-            } elseif ($value === null) {
-                $cleanData[$key] = null;
-            } elseif (is_string($value) && $value === '') {
-                // Skip empty strings for non-string fields
-                continue;
-            } else {
-                $cleanData[$key] = $value;
-            }
-        }
-        
-        $columns = implode(', ', array_keys($cleanData));
-        $placeholders = ':' . implode(', :', array_keys($cleanData));
+        $columns = implode(', ', array_keys($data));
+        $placeholders = ':' . implode(', :', array_keys($data));
         
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders}) RETURNING id";
+        $stmt = $this->query($sql, $data);
         
+        return (int)$stmt->fetch()['id'];
+    }
+
+    public function update(string $table, array $data, array $where): int
+    {
+        $setParts = [];
+        foreach (array_keys($data) as $column) {
+            $setParts[] = "{$column} = :{$column}";
+        }
+        
+        $whereParts = [];
+        foreach (array_keys($where) as $column) {
+            $whereParts[] = "{$column} = :where_{$column}";
+        }
+        
+        $sql = "UPDATE {$table} SET " . implode(', ', $setParts) . " WHERE " . implode(' AND ', $whereParts);
+        
+        $params = $data;
+        foreach ($where as $column => $value) {
+            $params["where_{$column}"] = $value;
+        }
+        
+        $stmt = $this->query($sql, $params);
+        return $stmt->rowCount();
+    }
+
+    public function delete(string $table, array $where): int
+    {
+        $whereParts = [];
+        foreach (array_keys($where) as $column) {
+            $whereParts[] = "{$column} = :{$column}";
+        }
+        
+        $sql = "DELETE FROM {$table} WHERE " . implode(' AND ', $whereParts);
+        $stmt = $this->query($sql, $where);
+        
+        return $stmt->rowCount();
+    }
+
+    public function beginTransaction(): bool
+    {
+        return $this->getConnection()->beginTransaction();
+    }
+
+    public function commit(): bool
+    {
+        return $this->getConnection()->commit();
+    }
+
+    public function rollback(): bool
+    {
+        return $this->getConnection()->rollback();
+    }
+
+    public function isConnected(): bool
+    {
         try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($cleanData);
-            $result = $stmt->fetch();
-            return $result['id'] ?? 0;
+            $this->getConnection()->query('SELECT 1');
+            return true;
         } catch (PDOException $e) {
-            throw new Exception("Insert failed: " . $e->getMessage());
+            return false;
         }
     }
 
-    public function update(string $table, array $data, string $where, array $whereParams = []): int
+    public function close(): void
     {
-        // Clean the data to ensure proper types
-        $cleanData = [];
-        foreach ($data as $key => $value) {
-            if (is_bool($value)) {
-                $cleanData[$key] = $value ? 't' : 'f'; // PostgreSQL boolean format
-            } elseif ($value === null) {
-                $cleanData[$key] = null;
-            } elseif (is_string($value) && $value === '') {
-                // Skip empty strings for non-string fields
-                continue;
-            } else {
-                $cleanData[$key] = $value;
-            }
-        }
-        
-        $setClause = implode(', ', array_map(fn($key) => "{$key} = :{$key}", array_keys($cleanData)));
-        
-        $sql = "UPDATE {$table} SET {$setClause} WHERE {$where}";
-        
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute(array_merge($cleanData, $whereParams));
-            return $stmt->rowCount();
-        } catch (PDOException $e) {
-            throw new Exception("Update failed: " . $e->getMessage());
-        }
-    }
-
-    public function delete(string $table, string $where, array $whereParams = []): int
-    {
-        $sql = "DELETE FROM {$table} WHERE {$where}";
-        
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($whereParams);
-            return $stmt->rowCount();
-        } catch (PDOException $e) {
-            throw new Exception("Delete failed: " . $e->getMessage());
-        }
-    }
-
-    public function findOne(string $table, string $where, array $whereParams = []): ?array
-    {
-        $sql = "SELECT * FROM {$table} WHERE {$where} LIMIT 1";
-        
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($whereParams);
-            $result = $stmt->fetch();
-            return $result ?: null;
-        } catch (PDOException $e) {
-            throw new Exception("Find failed: " . $e->getMessage());
-        }
-    }
-
-    public function findMany(string $table, string $where = '1=1', array $whereParams = [], string $orderBy = '', int $limit = 0): array
-    {
-        $sql = "SELECT * FROM {$table} WHERE {$where}";
-        
-        if ($orderBy) {
-            $sql .= " ORDER BY {$orderBy}";
-        }
-        
-        if ($limit > 0) {
-            $sql .= " LIMIT {$limit}";
-        }
-        
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($whereParams);
-            return $stmt->fetchAll();
-        } catch (PDOException $e) {
-            throw new Exception("Find many failed: " . $e->getMessage());
-        }
-    }
-
-    public function count(string $table, string $where = '1=1', array $whereParams = []): int
-    {
-        $sql = "SELECT COUNT(*) as count FROM {$table} WHERE {$where}";
-        
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($whereParams);
-            $result = $stmt->fetch();
-            return (int)($result['count'] ?? 0);
-        } catch (PDOException $e) {
-            throw new Exception("Count failed: " . $e->getMessage());
-        }
+        $this->connection = null;
     }
 }

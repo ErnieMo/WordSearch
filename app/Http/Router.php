@@ -4,247 +4,459 @@ declare(strict_types=1);
 
 namespace App\Http;
 
-use App\Services\DatabaseService;
+use App\Services\AuthService;
 use App\Services\PuzzleGenerator;
-use App\Services\PuzzleStore;
 use App\Services\ThemeService;
+use App\Services\PuzzleStore;
+use App\Services\DatabaseService;
 
 class Router
 {
     private array $routes = [];
-    private array $config;
+    private AuthService $authService;
+    private PuzzleGenerator $puzzleGenerator;
+    private ThemeService $themeService;
+    private PuzzleStore $puzzleStore;
     private DatabaseService $dbService;
 
-    public function __construct(array $config, DatabaseService $dbService)
+    public function __construct()
     {
-        $this->config = $config;
-        $this->dbService = $dbService;
-    }
-
-    public function get(string $path, callable $handler): void
-    {
-        $this->routes['GET'][$path] = $handler;
-    }
-
-    public function post(string $path, callable $handler): void
-    {
-        $this->routes['POST'][$path] = $handler;
-    }
-
-    public function dispatch(): void
-    {
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $this->dbService = new DatabaseService();
+        $this->authService = new AuthService($this->dbService);
+        $this->puzzleGenerator = new PuzzleGenerator();
+        $this->themeService = new ThemeService();
+        $this->puzzleStore = new PuzzleStore();
         
-        // Remove query string
-        $uri = parse_url($uri, PHP_URL_PATH);
+        $this->registerRoutes();
+    }
+
+    private function registerRoutes(): void
+    {
+        // Authentication routes
+        $this->addRoute('POST', '/api/auth/register', [$this, 'handleRegister']);
+        $this->addRoute('POST', '/api/auth/login', [$this, 'handleLogin']);
+        $this->addRoute('POST', '/api/auth/logout', [$this, 'handleLogout']);
+        $this->addRoute('GET', '/api/auth/profile', [$this, 'handleGetProfile']);
+        $this->addRoute('POST', '/api/auth/profile/update', [$this, 'handleUpdateProfile']);
+        $this->addRoute('POST', '/api/auth/password/change', [$this, 'handleChangePassword']);
+
+        // Game routes
+        $this->addRoute('POST', '/api/generate', [$this, 'handleGeneratePuzzle']);
+        $this->addRoute('GET', '/api/puzzle/{id}', [$this, 'handleGetPuzzle']);
+        $this->addRoute('POST', '/api/validate', [$this, 'handleValidateWord']);
+        $this->addRoute('GET', '/api/themes', [$this, 'handleGetThemes']);
+
+        // Score routes
+        $this->addRoute('GET', '/api/scores', [$this, 'handleGetScores']);
+        $this->addRoute('GET', '/api/scores/my', [$this, 'handleGetMyScores']);
+        $this->addRoute('GET', '/api/scores/stats', [$this, 'handleGetScoreStats']);
+        $this->addRoute('GET', '/api/scores/my/stats', [$this, 'handleGetMyScoreStats']);
+
+        // Page routes
+        $this->addRoute('GET', '/', [$this, 'handleHomePage']);
+        $this->addRoute('GET', '/play', [$this, 'handlePlayPage']);
+        $this->addRoute('GET', '/create', [$this, 'handleCreatePage']);
+        $this->addRoute('GET', '/scores', [$this, 'handleScoresPage']);
+        $this->addRoute('GET', '/profile', [$this, 'handleProfilePage']);
+    }
+
+    public function addRoute(string $method, string $path, callable $handler): void
+    {
+        $this->routes[] = [
+            'method' => $method,
+            'path' => $path,
+            'handler' => $handler
+        ];
+    }
+
+    public function handleRequest(string $method, string $path): void
+    {
+        $path = parse_url($path, PHP_URL_PATH);
         
-        // Check for exact match first
-        if (isset($this->routes[$method][$uri])) {
-            $handler = $this->routes[$method][$uri];
-            $handler();
+        foreach ($this->routes as $route) {
+            if ($route['method'] === $method && $this->matchPath($route['path'], $path)) {
+                try {
+                    $params = $this->extractPathParams($route['path'], $path);
+                    call_user_func_array($route['handler'], $params);
+                    return;
+                } catch (\Exception $e) {
+                    $this->sendErrorResponse($e->getMessage(), 500);
+                    return;
+                }
+            }
+        }
+        
+        $this->sendErrorResponse('Route not found', 404);
+    }
+
+    private function matchPath(string $routePath, string $requestPath): bool
+    {
+        $routeParts = explode('/', trim($routePath, '/'));
+        $requestParts = explode('/', trim($requestPath, '/'));
+        
+        if (count($routeParts) !== count($requestParts)) {
+            return false;
+        }
+        
+        foreach ($routeParts as $i => $routePart) {
+            if (strpos($routePart, '{') === 0 && strpos($routePart, '}') === strlen($routePart) - 1) {
+                continue; // Parameter placeholder
+            }
+            
+            if ($routePart !== $requestParts[$i]) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    private function extractPathParams(string $routePath, string $requestPath): array
+    {
+        $routeParts = explode('/', trim($routePath, '/'));
+        $requestParts = explode('/', trim($requestPath, '/'));
+        $params = [];
+        
+        foreach ($routeParts as $i => $routePart) {
+            if (strpos($routePart, '{') === 0 && strpos($routePart, '}') === strlen($routePart) - 1) {
+                $paramName = trim($routePart, '{}');
+                $params[$paramName] = $requestParts[$i] ?? null;
+            }
+        }
+        
+        return array_values($params);
+    }
+
+    // Authentication handlers
+    public function handleRegister(): void
+    {
+        $data = $this->getRequestData();
+        
+        try {
+            $result = $this->authService->register(
+                $data['username'] ?? '',
+                $data['email'] ?? '',
+                $data['password'] ?? '',
+                $data['first_name'] ?? '',
+                $data['last_name'] ?? ''
+            );
+            
+            $this->sendJsonResponse($result);
+        } catch (\Exception $e) {
+            $this->sendErrorResponse($e->getMessage(), 400);
+        }
+    }
+
+    public function handleLogin(): void
+    {
+        $data = $this->getRequestData();
+        
+        // Debug logging
+        error_log("Login handler received data: " . print_r($data, true));
+        error_log("Username: " . ($data['username'] ?? 'NOT SET'));
+        error_log("Password: " . ($data['password'] ?? 'NOT SET'));
+        
+        try {
+            $result = $this->authService->login(
+                $data['username'] ?? '',
+                $data['password'] ?? ''
+            );
+            
+            $this->sendJsonResponse($result);
+        } catch (\Exception $e) {
+            error_log("Login error: " . $e->getMessage());
+            $this->sendErrorResponse($e->getMessage(), 400);
+        }
+    }
+
+    public function handleLogout(): void
+    {
+        $token = $this->getAuthToken();
+        
+        try {
+            $result = $this->authService->logout($token);
+            $this->sendJsonResponse($result);
+        } catch (\Exception $e) {
+            $this->sendErrorResponse($e->getMessage(), 400);
+        }
+    }
+
+    public function handleGetProfile(): void
+    {
+        $user = $this->getAuthenticatedUser();
+        if (!$user) {
+            $this->sendErrorResponse('Unauthorized', 401);
             return;
         }
         
-        // Check for parameterized routes
-        foreach ($this->routes[$method] ?? [] as $route => $handler) {
-            $pattern = $this->routeToPattern($route);
-            if (preg_match($pattern, $uri, $matches)) {
-                array_shift($matches); // Remove full match
-                $handler(...$matches);
-                return;
-            }
+        try {
+            $profile = $this->authService->getUserProfile($user['user_id']);
+            $this->sendJsonResponse(['success' => true, 'profile' => $profile]);
+        } catch (\Exception $e) {
+            $this->sendErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function handleUpdateProfile(): void
+    {
+        $user = $this->getAuthenticatedUser();
+        if (!$user) {
+            $this->sendErrorResponse('Unauthorized', 401);
+            return;
         }
         
-        // No route found
-        http_response_code(404);
-        echo '404 Not Found';
-    }
-
-    private function routeToPattern(string $route): string
-    {
-        return '#^' . preg_replace('#\{([^}]+)\}#', '([^/]+)', $route) . '$#';
-    }
-
-    public function handleGeneratePuzzle(): string
-    {
+        $data = $this->getRequestData();
+        
         try {
-            $input = json_decode(file_get_contents('php://input'), true);
+            $result = $this->authService->updateProfile($user['user_id'], $data);
+            $this->sendJsonResponse($result);
+        } catch (\Exception $e) {
+            $this->sendErrorResponse($e->getMessage(), 400);
+        }
+    }
+
+    public function handleChangePassword(): void
+    {
+        $user = $this->getAuthenticatedUser();
+        if (!$user) {
+            $this->sendErrorResponse('Unauthorized', 401);
+            return;
+        }
+        
+        $data = $this->getRequestData();
+        
+        try {
+            $result = $this->authService->changePassword(
+                $user['user_id'],
+                $data['current_password'] ?? '',
+                $data['new_password'] ?? ''
+            );
             
-            if (!$input || !isset($input['words']) || !isset($input['options'])) {
-                throw new \Exception('Invalid input data');
-            }
+            $this->sendJsonResponse($result);
+        } catch (\Exception $e) {
+            $this->sendErrorResponse($e->getMessage(), 400);
+        }
+    }
 
-            $words = $input['words'];
-            $options = $input['options'];
-
-            // Validate input
-            if (empty($words) || !is_array($words)) {
-                throw new \Exception('Words array is required');
-            }
-
-            if (!isset($options['size']) || !isset($options['diagonals']) || !isset($options['reverse'])) {
-                throw new \Exception('Invalid options');
-            }
-
-            // Generate puzzle
-            $generator = new PuzzleGenerator($this->config);
-            $puzzle = $generator->generate($words, $options);
-
-            // Generate unique ID for the puzzle
-            $puzzleId = uniqid('puzzle_', true);
+    // Game handlers
+    public function handleGeneratePuzzle(): void
+    {
+        $data = $this->getRequestData();
+        $words = $data['words'] ?? [];
+        $options = $data['options'] ?? [];
+        
+        if (empty($words)) {
+            $this->sendErrorResponse('No words provided', 400);
+            return;
+        }
+        
+        try {
+            $puzzle = $this->puzzleGenerator->generatePuzzle($words, $options);
+            
+            // Save puzzle to storage
+            $puzzleId = $this->puzzleStore->savePuzzle($puzzle);
             $puzzle['id'] = $puzzleId;
-
-            // Store puzzle in database
-            $this->storePuzzleInDatabase($puzzle, $options);
-
-            header('Content-Type: application/json');
-            return json_encode([
+            
+            $this->sendJsonResponse([
                 'success' => true,
                 'id' => $puzzleId,
+                'puzzle' => $puzzle,
                 'message' => 'Puzzle generated successfully'
             ]);
-
         } catch (\Exception $e) {
-            header('Content-Type: application/json');
-            http_response_code(400);
-            return json_encode([
-                'success' => false,
-                'error' => $e->getMessage()
-            ]);
+            $this->sendErrorResponse($e->getMessage(), 500);
         }
     }
 
-    public function handleGetPuzzle(string $id): string
+    public function handleGetPuzzle(string $id): void
     {
         try {
-            $puzzle = $this->getPuzzleFromDatabase($id);
+            $puzzle = $this->puzzleStore->getPuzzle($id);
             
             if (!$puzzle) {
-                throw new \Exception('Puzzle not found');
+                $this->sendErrorResponse('Puzzle not found', 404);
+                return;
             }
-
-            header('Content-Type: application/json');
-            return json_encode($puzzle);
-
-        } catch (\Exception $e) {
-            header('Content-Type: application/json');
-            http_response_code(404);
-            return json_encode([
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    public function handleValidateWord(): string
-    {
-        try {
-            $input = json_decode(file_get_contents('php://input'), true);
             
-            if (!$input || !isset($input['puzzleId']) || !isset($input['word'])) {
-                throw new \Exception('Invalid input data');
-            }
-
-            $puzzleId = $input['puzzleId'];
-            $word = $input['word'];
-
-            $puzzle = $this->getPuzzleFromDatabase($puzzleId);
-            if (!$puzzle) {
-                throw new \Exception('Puzzle not found');
-            }
-
-            $isValid = in_array($word, $puzzle['words']);
-
-            header('Content-Type: application/json');
-            return json_encode([
+            $this->sendJsonResponse([
                 'success' => true,
-                'valid' => $isValid,
-                'word' => $word
+                'puzzle' => $puzzle
             ]);
-
         } catch (\Exception $e) {
-            header('Content-Type: application/json');
-            http_response_code(400);
-            return json_encode([
-                'success' => false,
-                'error' => $e->getMessage()
-            ]);
+            $this->sendErrorResponse($e->getMessage(), 500);
         }
     }
 
-    public function handleGetThemes(): string
+    public function handleValidateWord(): void
     {
+        $data = $this->getRequestData();
+        $grid = $data['grid'] ?? [];
+        $selection = $data['selection'] ?? [];
+        $placedWords = $data['placed_words'] ?? [];
+        
         try {
-            $themeService = new ThemeService($this->config);
-            $themes = $themeService->getAvailableThemes();
-
-            header('Content-Type: application/json');
-            return json_encode($themes);
-
-        } catch (\Exception $e) {
-            header('Content-Type: application/json');
-            http_response_code(500);
-            return json_encode([
-                'error' => 'Failed to load themes'
-            ]);
-        }
-    }
-
-    private function storePuzzleInDatabase(array $puzzle, array $options): string
-    {
-        try {
-            $puzzleId = $puzzle['id'];
+            $isValid = $this->puzzleGenerator->validateWordSelection($grid, $selection, $placedWords);
             
-            $this->dbService->insert('puzzles', [
-                'puzzle_id' => $puzzleId,
-                'theme' => 'custom', // Default theme for generated puzzles
-                'difficulty' => $this->getDifficultyFromSize($options['size']),
-                'grid_size' => $options['size'],
-                'words' => json_encode($puzzle['words']),
-                'grid' => json_encode($puzzle['grid']),
-                'placed_words' => json_encode($puzzle['placed']),
-                'seed' => $puzzle['seed']
+            $this->sendJsonResponse([
+                'success' => true,
+                'valid' => $isValid
             ]);
-
-            return $puzzleId;
-
         } catch (\Exception $e) {
-            // Fallback to file storage if database fails
-            $store = new PuzzleStore();
-            $store->save($puzzle);
-            return $puzzle['id'];
+            $this->sendErrorResponse($e->getMessage(), 500);
         }
     }
 
-    private function getPuzzleFromDatabase(string $id): ?array
+    public function handleGetThemes(): void
     {
         try {
-            $puzzle = $this->dbService->findOne('puzzles', 'puzzle_id = :id', ['id' => $id]);
+            $themes = $this->themeService->getAvailableThemes();
+            $stats = $this->themeService->getThemeStats();
             
-            if (!$puzzle) {
-                return null;
+            // Include word lists for each theme
+            foreach ($themes as &$theme) {
+                try {
+                    $theme['words'] = $this->themeService->getThemeWords($theme['id']);
+                } catch (\Exception $e) {
+                    $theme['words'] = [];
+                }
             }
-
-            return [
-                'id' => $puzzle['puzzle_id'],
-                'grid' => json_decode($puzzle['grid'], true),
-                'words' => json_decode($puzzle['words'], true),
-                'placed' => json_decode($puzzle['placed_words'], true),
-                'size' => $puzzle['grid_size'],
-                'seed' => $puzzle['seed']
-            ];
-
+            
+            $this->sendJsonResponse([
+                'success' => true,
+                'themes' => $themes,
+                'stats' => $stats
+            ]);
         } catch (\Exception $e) {
-            // Fallback to file storage if database fails
-            $store = new PuzzleStore();
-            return $store->load($id);
+            $this->sendErrorResponse($e->getMessage(), 500);
         }
     }
 
-    private function getDifficultyFromSize(int $size): string
+    // Score handlers (placeholder implementations)
+    public function handleGetScores(): void
     {
-        if ($size <= 10) return 'easy';
-        if ($size <= 15) return 'medium';
-        return 'hard';
+        $this->sendJsonResponse([
+            'success' => true,
+            'scores' => [],
+            'message' => 'Score system not yet implemented'
+        ]);
+    }
+
+    public function handleGetMyScores(): void
+    {
+        $this->sendJsonResponse([
+            'success' => true,
+            'scores' => [],
+            'message' => 'Score system not yet implemented'
+        ]);
+    }
+
+    public function handleGetScoreStats(): void
+    {
+        $this->sendJsonResponse([
+            'success' => true,
+            'stats' => [],
+            'message' => 'Score system not yet implemented'
+        ]);
+    }
+
+    public function handleGetMyScoreStats(): void
+    {
+        $this->sendJsonResponse([
+            'success' => true,
+            'stats' => [],
+            'message' => 'Score system not yet implemented'
+        ]);
+    }
+
+    // Page handlers
+    public function handleHomePage(): void
+    {
+        $this->renderPage('home');
+    }
+
+    public function handlePlayPage(): void
+    {
+        $this->renderPage('play');
+    }
+
+    public function handleCreatePage(): void
+    {
+        $this->renderPage('create');
+    }
+
+    public function handleScoresPage(): void
+    {
+        $this->renderPage('scores');
+    }
+
+    public function handleProfilePage(): void
+    {
+        $this->renderPage('profile');
+    }
+
+    // Helper methods
+    private function getRequestData(): array
+    {
+        $input = file_get_contents('php://input');
+        
+        // Debug logging
+        error_log("Raw input received: " . $input);
+        error_log("Input length: " . strlen($input));
+        
+        $decoded = json_decode($input, true);
+        if ($decoded === null) {
+            error_log("JSON decode error: " . json_last_error_msg());
+            error_log("JSON last error: " . json_last_error());
+        }
+        
+        return $decoded ?? [];
+    }
+
+    private function getAuthToken(): ?string
+    {
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        
+        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            return $matches[1];
+        }
+        
+        return null;
+    }
+
+    private function getAuthenticatedUser(): ?array
+    {
+        $token = $this->getAuthToken();
+        if (!$token) {
+            return null;
+        }
+        
+        return $this->authService->validateToken($token);
+    }
+
+    private function sendJsonResponse(array $data, int $statusCode = 200): void
+    {
+        http_response_code($statusCode);
+        header('Content-Type: application/json');
+        echo json_encode($data);
+    }
+
+    private function sendErrorResponse(string $message, int $statusCode = 400): void
+    {
+        $this->sendJsonResponse([
+            'success' => false,
+            'error' => $message
+        ], $statusCode);
+    }
+
+    private function renderPage(string $pageName): void
+    {
+        $pageFile = __DIR__ . '/../../public/views/' . $pageName . '.php';
+        
+        if (file_exists($pageFile)) {
+            include $pageFile;
+        } else {
+            $this->sendErrorResponse('Page not found', 404);
+        }
     }
 }

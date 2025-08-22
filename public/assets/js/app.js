@@ -1,926 +1,426 @@
-/**
- * Word Search Game - Main JavaScript
- */
-
-(function ($) {
+// Word Search Game - Main JavaScript File
+(function() {
     'use strict';
 
-    // Game state
-    let gameState = {
-        puzzle: null,
-        foundWords: new Set(),
-        startTime: null,
-        timer: null,
-        isSelecting: false,
-        selectionStart: null,
-        currentSelection: [],
-        selectedTheme: null,
-        selectedDifficulty: null
-    };
+    // Global state
+    let currentUser = null;
+    let selectedTheme = null;
+    let currentGame = null;
+    let gameTimer = null;
+    let gameStartTime = null;
 
-    // Preset word lists
-    const presetWords = {
-        animals: ['ELEPHANT', 'GIRAFFE', 'LION', 'TIGER', 'MONKEY', 'ZEBRA', 'PANDA', 'KOALA', 'KANGAROO', 'RHINO'],
-        geography: ['AMERICA', 'EUROPE', 'ASIA', 'AFRICA', 'AUSTRALIA', 'CANADA', 'BRAZIL', 'CHINA', 'INDIA', 'JAPAN'],
-        technology: ['COMPUTER', 'KEYBOARD', 'MONITOR', 'MOUSE', 'LAPTOP', 'TABLET', 'SMARTPHONE', 'INTERNET', 'SOFTWARE', 'HARDWARE'],
-        food: ['PIZZA', 'BURGER', 'SALAD', 'SUSHI', 'PASTA', 'STEAK', 'CHICKEN', 'FISH', 'BREAD', 'CHEESE']
-    };
-
-    // Initialize when DOM is ready
-    $(document).ready(function () {
-        initializeGame();
+    // DOM ready
+    $(document).ready(function() {
+        initializeApp();
         setupEventListeners();
+        loadThemes();
+        checkAuthStatus();
     });
 
-    function initializeGame() {
-        // Check if we're on the play page and have a puzzle ID
-        const urlParams = new URLSearchParams(window.location.search);
-        const puzzleId = urlParams.get('id');
-
-        if (puzzleId && window.location.pathname === '/play') {
-            loadPuzzle(puzzleId);
-        } else if (window.location.pathname === '/') {
-            // Set default selections on home page
-            setDefaultSelections();
+    // Initialize application
+    function initializeApp() {
+        console.log('Word Search Game initialized');
+        
+        // Check if user is already logged in
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            validateToken(token);
         }
     }
 
-    function setDefaultSelections() {
-        // Set Animals as default theme
-        gameState.selectedTheme = 'animals';
-
-        // Set Easy as default difficulty
-        gameState.selectedDifficulty = 'easy';
-
-        // Enable start game button since both are selected
-        $('#startGameBtn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
-
-        console.log('Default selections set: Animals theme, Easy difficulty');
-    }
-
+    // Setup event listeners
     function setupEventListeners() {
-        // Home page events
-        $('.btn-difficulty').on('click', handleDifficultySelection);
-        $('.btn-theme').on('click', handleThemeSelection);
-        $('#quickStart').on('click', handleQuickStart);
-        $('#startGameBtn').on('click', handleStartGame);
-        $('#startGame').on('click', startGameFromModal);
+        // Authentication forms
+        $('#loginForm').on('submit', handleLogin);
+        $('#registerForm').on('submit', handleRegister);
+        $('#logoutBtn').on('click', handleLogout);
 
-        // Create page events
-        $('#createPuzzleForm').on('submit', handleCreatePuzzle);
-        $('#gridSize').on('change', handleGridSizeChange);
-        $('#wordList').on('input', updateWordCount);
-        $('[data-preset]').on('click', handlePresetSelection);
-        $('#playPuzzleBtn').on('click', playCreatedPuzzle);
-        $('#sharePuzzleBtn').on('click', shareCreatedPuzzle);
-
-        // Play page events
-        $('#hintBtn').on('click', showHint);
-        $('#newGameBtn').on('click', startNewGame);
-        $('#printBtn').on('click', printPuzzle);
-        $('#playAgain').on('click', startNewGame);
-        $('#copyLink').on('click', copyShareLink);
-
-        // Grid interaction events
-        $(document).on('mousedown touchstart', '.game-grid .grid-cell', startSelection);
-        $(document).on('mousemove touchmove', '.game-grid .grid-cell', updateSelection);
-        $(document).on('mouseup touchend', '.game-grid .grid-cell', endSelection);
+        // Game controls
+        $('#startGameBtn').on('click', startNewGame);
+        
+        // Theme selection
+        $(document).on('click', '.theme-card', selectTheme);
+        
+        // Difficulty and options
+        $('input[name="difficulty"]').on('change', updateGameOptions);
+        $('#diagonalsEnabled, #reverseEnabled').on('change', updateGameOptions);
     }
 
-    // Home page functions
-    function handleDifficultySelection() {
-        const difficulty = $(this).data('difficulty');
-
-        // Clear previous difficulty selection
-        $('.difficulty-card').removeClass('border-primary');
-        $('.difficulty-checkmark').hide();
-
-        // Highlight selected difficulty
-        $(this).closest('.difficulty-card').addClass('border-primary');
-        $(this).closest('.difficulty-card').find('.difficulty-checkmark').show();
-
-        // Store selected difficulty
-        gameState.selectedDifficulty = difficulty;
-
-        // Enable start game if both theme and difficulty are selected
-        if (gameState.selectedTheme && gameState.selectedDifficulty) {
-            $('#startGameBtn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
-        }
-    }
-
-    function handleThemeSelection() {
-        const theme = $(this).data('theme');
-
-        // Clear previous theme selection
-        $('.theme-card').removeClass('border-primary');
-        $('.theme-checkmark').hide();
-
-        // Highlight selected theme
-        $(this).closest('.theme-card').addClass('border-primary');
-        $(this).closest('.theme-card').find('.theme-checkmark').show();
-
-        // Store selected theme
-        gameState.selectedTheme = theme;
-
-        // Enable start game if both theme and difficulty are selected
-        if (gameState.selectedTheme && gameState.selectedDifficulty) {
-            $('#startGameBtn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
-        }
-    }
-
-    function handleStartGame() {
-        if (!gameState.selectedTheme || !gameState.selectedDifficulty) {
-            alert('Please select both a theme and difficulty level.');
-            return;
-        }
-
-        // Get difficulty settings
-        const difficultySettings = {
-            easy: { size: 10, diagonals: false, reverse: false, wordCount: 8 },
-            medium: { size: 15, diagonals: true, reverse: false, wordCount: 18 },
-            hard: { size: 20, diagonals: true, reverse: true, wordCount: 25 }
-        };
-
-        const settings = difficultySettings[gameState.selectedDifficulty];
-
-        // Load theme words from API
-        $.get(`/api/themes`)
-            .done(function (themes) {
-                const themeData = themes[gameState.selectedTheme];
-                if (themeData && themeData.words) {
-                    // Randomly select words for the difficulty level
-                    const shuffledWords = themeData.words.sort(() => 0.5 - Math.random());
-                    const selectedWords = shuffledWords.slice(0, Math.min(settings.wordCount, themeData.words.length));
-
-                    // Generate puzzle
-                    generatePuzzle(selectedWords, settings);
-                } else {
-                    alert('Error loading theme words. Please try again.');
-                }
-            })
-            .fail(function () {
-                alert('Error loading theme. Please try again.');
-            });
-    }
-
-    function generatePuzzle(words, settings) {
-        const requestData = {
-            words: words,
-            options: {
-                size: settings.size,
-                diagonals: settings.diagonals,
-                reverse: settings.reverse
-            }
-        };
-
-        $.ajax({
-            url: '/api/generate',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(requestData),
-            success: function (response) {
-                console.log('Puzzle generation response:', response);
-
-                if (response.success && response.id) {
-                    // Redirect to play page with the new puzzle
-                    window.location.href = '/play?id=' + response.id;
-                } else {
-                    const errorMsg = response.error || 'Unknown error occurred';
-                    console.error('Puzzle generation failed:', errorMsg);
-                    alert('Error generating puzzle: ' + errorMsg);
-                }
-            },
-            error: function (xhr) {
-                console.error('Puzzle generation request failed:', xhr);
-                const errorMsg = xhr.responseJSON?.error || 'Request failed';
-                alert('Error generating puzzle: ' + errorMsg);
-            }
-        });
-    }
-
-    function handleQuickStart() {
-        // Use default settings for quick start
-        $('#difficulty').val('medium');
-        $('#gridSize').val('12');
-        $('#theme').val('technology');
-        $('#allowDiagonals').prop('checked', true);
-        $('#allowReverse').prop('checked', false);
-
-        $('#gameOptionsModal').modal('show');
-    }
-
-    function startGameFromModal() {
-        const options = {
-            difficulty: $('#difficulty').val(),
-            gridSize: parseInt($('#gridSize').val()),
-            theme: $('#theme').val(),
-            allowDiagonals: $('#allowDiagonals').is(':checked'),
-            allowReverse: $('#allowReverse').is(':checked')
-        };
-
-        $('#gameOptionsModal').modal('hide');
-        startGame(options);
-    }
-
-    function startGame(options) {
-        // Show loading modal
-        $('#loadingModal').modal('show');
-
-        // Get words for the selected theme
-        const words = presetWords[options.theme] || presetWords.technology;
-
-        // Generate puzzle
-        $.ajax({
-            url: '/api/generate',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                words: words,
-                options: {
-                    size: options.gridSize,
-                    diagonals: options.allowDiagonals,
-                    reverse: options.allowReverse
-                }
-            }),
-            success: function (response) {
-                $('#loadingModal').modal('hide');
-
-                console.log('Puzzle generation response:', response);
-
-                if (response.success && response.id) {
-                    // Store puzzle and redirect to play page
-                    localStorage.setItem('currentPuzzle', JSON.stringify(response));
-                    window.location.href = '/play?id=' + response.id;
-                } else {
-                    const errorMsg = response.error || 'Unknown error occurred';
-                    console.error('Puzzle generation failed:', errorMsg);
-                    alert('Error generating puzzle: ' + errorMsg);
-                }
-            },
-            error: function (xhr) {
-                $('#loadingModal').modal('hide');
-                console.error('Puzzle generation request failed:', xhr);
-                const errorMsg = xhr.responseJSON?.error || 'Request failed';
-                alert('Error generating puzzle: ' + errorMsg);
-            }
-        });
-    }
-
-    // Create page functions
-    function handleCreatePuzzle(e) {
+    // Authentication functions
+    function handleLogin(e) {
         e.preventDefault();
-
-        const formData = new FormData(e.target);
-        const words = formData.get('wordList')
-            .split(/[\n,]/)
-            .map(word => word.trim().toUpperCase())
-            .filter(word => word.length > 0);
-
-        if (words.length === 0) {
-            alert('Please enter at least one word.');
+        
+        const username = $('#loginUsername').val();
+        const password = $('#loginPassword').val();
+        
+        if (!username || !password) {
+            showAlert('Please fill in all fields', 'danger');
             return;
         }
-
-        const gridSize = formData.get('gridSize') === 'custom'
-            ? parseInt(formData.get('customSize'))
-            : parseInt(formData.get('gridSize'));
-
-        const options = {
-            size: gridSize,
-            diagonals: formData.get('allowDiagonals') === 'on',
-            reverse: formData.get('allowReverse') === 'on'
-        };
-
-        // Show loading modal
-        $('#loadingModal').modal('show');
-
-        // Generate puzzle
+        
         $.ajax({
-            url: '/api/generate',
+            url: '/api/auth/login',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({
-                words: words,
-                options: options
-            }),
-            success: function (response) {
-                $('#loadingModal').modal('hide');
-                showPuzzlePreview(response);
+            data: JSON.stringify({ username, password }),
+            success: function(response) {
+                if (response.success) {
+                    localStorage.setItem('authToken', response.token);
+                    currentUser = {
+                        id: response.user_id,
+                        username: response.username,
+                        firstName: response.first_name,
+                        lastName: response.last_name
+                    };
+                    
+                    updateAuthUI();
+                    $('#loginModal').modal('hide');
+                    showAlert('Login successful!', 'success');
+                    
+                    // Clear form
+                    $('#loginForm')[0].reset();
+                } else {
+                    showAlert(response.error || 'Login failed', 'danger');
+                }
             },
-            error: function (xhr) {
-                $('#loadingModal').modal('hide');
-                alert('Error generating puzzle: ' + (xhr.responseJSON?.error || 'Unknown error'));
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert(response?.error || 'Login failed', 'danger');
             }
         });
     }
 
-    function showPuzzlePreview(puzzle) {
-        // Render preview grid
-        const gridHtml = renderGrid(puzzle.grid, false);
-        $('#previewGrid').html(gridHtml);
-
-        // Show word list
-        const wordsHtml = puzzle.words.map(word =>
-            `<div class="word-item">${word}</div>`
-        ).join('');
-        $('#previewWords').html(wordsHtml);
-
-        // Store puzzle for later use
-        localStorage.setItem('previewPuzzle', JSON.stringify(puzzle));
-
-        // Show preview section
-        $('#previewSection').show();
-
-        // Scroll to preview
-        $('#previewSection')[0].scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function handleGridSizeChange() {
-        if ($(this).val() === 'custom') {
-            $('#customSizeGroup').show();
-        } else {
-            $('#customSizeGroup').hide();
+    function handleRegister(e) {
+        e.preventDefault();
+        
+        const formData = {
+            username: $('#registerUsername').val(),
+            email: $('#registerEmail').val(),
+            password: $('#registerPassword').val(),
+            first_name: $('#registerFirstName').val(),
+            last_name: $('#registerLastName').val()
+        };
+        
+        if (Object.values(formData).some(val => !val)) {
+            showAlert('Please fill in all fields', 'danger');
+            return;
         }
-    }
-
-    function updateWordCount() {
-        const text = $(this).val();
-        const words = text.split(/[\n,]/).filter(word => word.trim().length > 0);
-        const maxLength = Math.max(...words.map(word => word.trim().length), 0);
-
-        $('#wordCount').text(words.length);
-        $('#maxWordLength').text(maxLength);
-    }
-
-    function handlePresetSelection() {
-        const preset = $(this).data('preset');
-
-        if (preset === 'clear') {
-            $('#wordList').val('');
-            updateWordCount();
-        } else if (presetWords[preset]) {
-            $('#wordList').val(presetWords[preset].join('\n'));
-            updateWordCount();
-        }
-    }
-
-    function playCreatedPuzzle() {
-        const puzzle = JSON.parse(localStorage.getItem('previewPuzzle'));
-        if (puzzle) {
-            localStorage.setItem('currentPuzzle', JSON.stringify(puzzle));
-            window.location.href = '/play?id=' + puzzle.id;
-        }
-    }
-
-    function shareCreatedPuzzle() {
-        const puzzle = JSON.parse(localStorage.getItem('previewPuzzle'));
-        if (puzzle) {
-            const shareUrl = window.location.origin + '/play?id=' + puzzle.id;
-            navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('Share link copied to clipboard!');
-            }).catch(() => {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = shareUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                alert('Share link copied to clipboard!');
-            });
-        }
-    }
-
-    // Play page functions
-    function loadPuzzle(puzzleId) {
+        
         $.ajax({
-            url: '/api/puzzle/' + puzzleId,
+            url: '/api/auth/register',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.success) {
+                    localStorage.setItem('authToken', response.token);
+                    currentUser = {
+                        id: response.user_id,
+                        username: response.username,
+                        firstName: response.first_name,
+                        lastName: response.last_name
+                    };
+                    
+                    updateAuthUI();
+                    $('#registerModal').modal('hide');
+                    showAlert('Registration successful! You are now logged in.', 'success');
+                    
+                    // Clear form
+                    $('#registerForm')[0].reset();
+                } else {
+                    showAlert(response.error || 'Registration failed', 'danger');
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON;
+                showAlert(response?.error || 'Registration failed', 'danger');
+            }
+        });
+    }
+
+    function handleLogout() {
+        const token = localStorage.getItem('authToken');
+        
+        if (token) {
+            $.ajax({
+                url: '/api/auth/logout',
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function() {
+                    // Clear local data
+                    localStorage.removeItem('authToken');
+                    currentUser = null;
+                    updateAuthUI();
+                    showAlert('Logged out successfully', 'info');
+                }
+            });
+        } else {
+            localStorage.removeItem('authToken');
+            currentUser = null;
+            updateAuthUI();
+        }
+    }
+
+    function validateToken(token) {
+        $.ajax({
+            url: '/api/auth/profile',
             method: 'GET',
-            success: function (response) {
-                console.log('Puzzle loaded from API:', response);
-                console.log('Response type:', typeof response);
-                console.log('Response keys:', Object.keys(response));
-
-                // Ensure response is an object, not a string
-                if (typeof response === 'string') {
-                    try {
-                        response = JSON.parse(response);
-                        console.log('Parsed response:', response);
-                    } catch (e) {
-                        console.error('Failed to parse response:', e);
-                        alert('Error loading puzzle data');
-                        return;
-                    }
+            headers: { 'Authorization': `Bearer ${token}` },
+            success: function(response) {
+                if (response.success && response.profile) {
+                    currentUser = {
+                        id: response.profile.id,
+                        username: response.profile.username,
+                        firstName: response.profile.first_name,
+                        lastName: response.profile.last_name
+                    };
+                    updateAuthUI();
+                } else {
+                    localStorage.removeItem('authToken');
                 }
-
-                gameState.puzzle = response;
-                gameState.foundWords = new Set(); // Reset found words for new puzzle
-                renderGame();
-                startTimer();
             },
-            error: function (xhr) {
-                alert('Error loading puzzle: ' + (xhr.responseJSON?.error || 'Unknown error'));
-                window.location.href = '/';
+            error: function() {
+                localStorage.removeItem('authToken');
             }
         });
     }
 
-    function renderGame() {
-        if (!gameState.puzzle) return;
-
-        console.log('Rendering game with puzzle:', gameState.puzzle);
-        console.log('Puzzle words:', gameState.puzzle.words);
-        console.log('Words type:', typeof gameState.puzzle.words);
-        console.log('Words is array:', Array.isArray(gameState.puzzle.words));
-
-        // Render grid
-        const gridHtml = renderGrid(gameState.puzzle.grid, true);
-        $('#gameGrid').html(gridHtml);
-
-        // Render word list
-        if (gameState.puzzle.words && Array.isArray(gameState.puzzle.words)) {
-            const wordsHtml = gameState.puzzle.words.map(word =>
-                `<div class="word-item" data-word="${word}">${word}</div>`
-            ).join('');
-            $('#wordList').html(wordsHtml);
+    function updateAuthUI() {
+        if (currentUser) {
+            $('#guestNav').addClass('d-none');
+            $('#userNav').removeClass('d-none');
+            $('#userDisplayName').text(currentUser.firstName || currentUser.username);
         } else {
-            console.error('Invalid words data:', gameState.puzzle.words);
-            $('#wordList').html('<div class="alert alert-danger">Error: Invalid word data</div>');
+            $('#guestNav').removeClass('d-none');
+            $('#userNav').addClass('d-none');
         }
-
-        // Update game info
-        $('#gameDifficulty').text(getDifficultyText(gameState.puzzle.size));
-        $('#gameSize, #gameSize2').text(gameState.puzzle.size);
-        $('#gameTheme').text('Custom');
-        $('#totalCount').text(gameState.puzzle.words.length);
-
-        // Set share link
-        const shareUrl = window.location.origin + '/play?id=' + gameState.puzzle.id;
-        $('#shareLink').val(shareUrl);
-
-        // Add fade-in animation
-        $('.card').addClass('fade-in');
     }
 
-    function renderGrid(grid, interactive) {
-        let html = '<div class="game-grid"><table>';
+    function checkAuthStatus() {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            validateToken(token);
+        }
+    }
 
-        for (let row = 0; row < grid.length; row++) {
-            html += '<tr>';
-            for (let col = 0; col < grid[row].length; col++) {
-                let cellHtml = '<td';
-                if (interactive) {
-                    cellHtml += ' class="grid-cell"';
-                    cellHtml += ` data-r="${row}" data-c="${col}" data-ch="${grid[row][col]}"`;
+    // Theme management
+    function loadThemes() {
+        console.log('Loading themes from API...');
+        $.ajax({
+            url: '/api/themes',
+            method: 'GET',
+            success: function(response) {
+                console.log('Themes API response:', response);
+                if (response.success) {
+                    // Store full theme data including words for later use
+                    window.loadedThemes = response.themes;
+                    console.log('Stored themes in cache:', response.themes.length, 'themes');
+                    renderThemes(response.themes);
+                    updateStats(response.stats);
+                } else {
+                    console.error('Themes API returned success=false');
                 }
-                cellHtml += `>${grid[row][col]}</td>`;
-                html += cellHtml;
+            },
+            error: function(xhr, status, error) {
+                console.error('Failed to load themes:', status, error, xhr.responseText);
+                showAlert('Failed to load themes', 'danger');
             }
-            html += '</tr>';
-        }
-
-        html += '</table></div>';
-
-        if (interactive) {
-            console.log('Rendered interactive grid HTML:', html);
-        }
-
-        return html;
-    }
-
-    function getDifficultyText(size) {
-        if (size <= 10) return 'Easy';
-        if (size <= 12) return 'Medium';
-        return 'Hard';
-    }
-
-    function startTimer() {
-        gameState.startTime = Date.now();
-        gameState.timer = setInterval(updateTimer, 1000);
-    }
-
-    function updateTimer() {
-        if (!gameState.startTime) return;
-
-        const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-
-        $('#timer').text(
-            (minutes < 10 ? '0' : '') + minutes + ':' +
-            (seconds < 10 ? '0' : '') + seconds
-        );
-    }
-
-    // Grid interaction functions
-    function startSelection(e) {
-        if (!gameState.puzzle) return;
-
-        e.preventDefault();
-        console.log('Selection started on:', $(this).data('r'), $(this).data('c'));
-        gameState.isSelecting = true;
-        gameState.selectionStart = { row: $(this).data('r'), col: $(this).data('c') };
-        gameState.currentSelection = [gameState.selectionStart];
-
-        $(this).addClass('selected');
-        console.log('Selection start:', gameState.selectionStart);
-    }
-
-    function updateSelection(e) {
-        if (!gameState.isSelecting || !gameState.puzzle) return;
-
-        e.preventDefault();
-        const currentCell = { row: $(this).data('r'), col: $(this).data('c') };
-
-        // Clear previous selection
-        $('.game-grid .grid-cell').removeClass('selected');
-
-        // Calculate selection path
-        const path = calculateSelectionPath(gameState.selectionStart, currentCell);
-        gameState.currentSelection = path;
-
-        // Highlight selection
-        path.forEach(pos => {
-            $(`.game-grid .grid-cell[data-r="${pos.row}"][data-c="${pos.col}"]`).addClass('selected');
         });
     }
 
-    function endSelection(e) {
-        if (!gameState.isSelecting || !gameState.puzzle) return;
+    function renderThemes(themes) {
+        const themeGrid = $('#themeGrid');
+        themeGrid.empty();
+        
+        themes.forEach(theme => {
+            const themeCard = $(`
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card theme-card h-100" data-theme-id="${theme.id}">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h6 class="mb-0">${theme.name}</h6>
+                        </div>
+                        <div class="card-body text-center">
+                            <p class="text-muted small mb-2">${theme.description}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-secondary">${theme.word_count} words</span>
+                                <span class="badge bg-${getDifficultyColor(theme.difficulty)}">${theme.difficulty}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+            
+            themeGrid.append(themeCard);
+        });
+    }
 
-        e.preventDefault();
-        console.log('Selection ended, checking word...');
-        gameState.isSelecting = false;
-
-        // Clear selection highlighting
-        $('.game-grid .grid-cell').removeClass('selected');
-
-        // Check if selection forms a valid word
-        if (gameState.currentSelection.length > 1) {
-            console.log('Selection length > 1, calling checkWordSelection');
-            checkWordSelection();
-        } else {
-            console.log('Selection too short, length:', gameState.currentSelection.length);
+    function getDifficultyColor(difficulty) {
+        switch (difficulty) {
+            case 'easy': return 'success';
+            case 'medium': return 'warning';
+            case 'hard': return 'danger';
+            default: return 'secondary';
         }
     }
 
-    function calculateSelectionPath(start, end) {
-        const path = [];
-        const dr = end.row - start.row;
-        const dc = end.col - start.col;
-
-        // Determine direction
-        const steps = Math.max(Math.abs(dr), Math.abs(dc));
-        if (steps === 0) return [start];
-
-        const stepR = dr / steps;
-        const stepC = dc / steps;
-
-        for (let i = 0; i <= steps; i++) {
-            const row = Math.round(start.row + (stepR * i));
-            const col = Math.round(start.col + (stepC * i));
-            path.push({ row, col });
-        }
-
-        return path;
+    function selectTheme() {
+        $('.theme-card').removeClass('selected');
+        $(this).addClass('selected');
+        
+        selectedTheme = $(this).data('theme-id');
+        updateStartButton();
     }
 
-    function checkWordSelection() {
-        if (!gameState.puzzle) return;
-
-        // Ensure foundWords is always a Set
-        if (!gameState.foundWords || !(gameState.foundWords instanceof Set)) {
-            console.log('Resetting foundWords to new Set');
-            gameState.foundWords = new Set();
-        }
-
-        // Get the word from the selection
-        const word = gameState.currentSelection
-            .map(pos => gameState.puzzle.grid[pos.row][pos.col])
-            .join('');
-
-        console.log('Checking word selection:', word);
-        console.log('Current selection path:', gameState.currentSelection);
-        console.log('Available words:', gameState.puzzle.words);
-
-        // Check if it's a valid word (forward or reverse)
-        const validWords = gameState.puzzle.words;
-        const isValid = validWords.includes(word) || validWords.includes(word.split('').reverse().join(''));
-
-        console.log('Word valid?', isValid);
-
-        if (isValid && !gameState.foundWords.has(word)) {
-            // Mark word as found
-            gameState.foundWords.add(word);
-
-            // Highlight found cells
-            gameState.currentSelection.forEach(pos => {
-                $(`.game-grid .grid-cell[data-r="${pos.row}"][data-c="${pos.col}"]`).addClass('found');
-            });
-
-            // Mark word in list as found
-            $(`.word-item[data-word="${word}"]`).addClass('found');
-
-            // Update found count
-            $('#foundCount').text(gameState.foundWords.size);
-
-            // Check for win
-            if (gameState.foundWords.size === validWords.length) {
-                setTimeout(showWinModal, 500);
-            }
-        }
+    function updateStartButton() {
+        const canStart = selectedTheme !== null;
+        $('#startGameBtn').prop('disabled', !canStart);
     }
 
-    function showHint() {
-        if (!gameState.puzzle) return;
+    function updateGameOptions() {
+        // This function can be used to update game options in real-time
+        console.log('Game options updated');
+    }
 
-        // Ensure foundWords is always a Set
-        if (!gameState.foundWords || !(gameState.foundWords instanceof Set)) {
-            console.log('Resetting foundWords to new Set in showHint');
-            gameState.foundWords = new Set();
-        }
-
-        // Find a random unfound word
-        const unfoundWords = gameState.puzzle.words.filter(word => !gameState.foundWords.has(word));
-        if (unfoundWords.length === 0) {
-            alert('All words have been found!');
+    // Game functions
+    function startNewGame() {
+        if (!selectedTheme) {
+            showAlert('Please select a theme first', 'warning');
             return;
         }
-
-        const hintWord = unfoundWords[Math.floor(Math.random() * unfoundWords.length)];
-        console.log('Showing hint for word:', hintWord);
-
-        // Find the word in the grid and highlight it temporarily
-        const wordInfo = gameState.puzzle.placed.find(p => p.word === hintWord);
-        if (wordInfo && wordInfo.startRow !== undefined && wordInfo.startCol !== undefined) {
-            console.log('Word placement info:', wordInfo);
-
-            // Highlight the word cells
-            const direction = wordInfo.direction;
-            const startRow = wordInfo.startRow;
-            const startCol = wordInfo.startCol;
-
-            for (let i = 0; i < hintWord.length; i++) {
-                const row = startRow + (direction[0] * i);
-                const col = startCol + (direction[1] * i);
-                const cell = $(`.game-grid .grid-cell[data-r="${row}"][data-c="${col}"]`);
-                if (cell.length > 0) {
-                    cell.addClass('hint');
-                    console.log(`Highlighting cell [${row},${col}] with letter ${hintWord[i]}`);
-                } else {
-                    console.warn(`Cell [${row},${col}] not found in grid`);
-                }
-            }
-
-            // Remove hint after 3 seconds
-            setTimeout(() => {
-                $('.game-grid .grid-cell').removeClass('hint');
-                console.log('Hint removed');
-            }, 3000);
+        
+        const difficulty = $('input[name="difficulty"]:checked').val();
+        const diagonals = $('#diagonalsEnabled').is(':checked');
+        const reverse = $('#reverseEnabled').is(':checked');
+        
+        // Show loading modal
+        $('#loadingModal').modal('show');
+        
+        // Get theme words from the loaded themes
+        const theme = window.loadedThemes ? window.loadedThemes.find(t => t.id === selectedTheme) : null;
+        if (theme && theme.words && Array.isArray(theme.words)) {
+            console.log('Using cached theme words:', theme.words.length, 'words');
+            generatePuzzle(theme.words, { difficulty, diagonals, reverse });
         } else {
-            console.error('Word placement info missing or incomplete:', wordInfo);
-            alert('Hint system error: Could not locate word placement');
+            console.log('Theme words not in cache, fetching from API...');
+            // Fallback: try to get words from API
+            $.ajax({
+                url: '/api/themes',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        const theme = response.themes.find(t => t.id === selectedTheme);
+                        if (theme && theme.words && Array.isArray(theme.words)) {
+                            console.log('API returned theme words:', theme.words.length, 'words');
+                            generatePuzzle(theme.words, { difficulty, diagonals, reverse });
+                        } else {
+                            $('#loadingModal').modal('hide');
+                            console.error('Theme words not available from API:', theme);
+                            showAlert('Theme words not available', 'danger');
+                        }
+                    } else {
+                        $('#loadingModal').modal('hide');
+                        showAlert('Failed to load theme data', 'danger');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $('#loadingModal').modal('hide');
+                    console.error('API error:', status, error, xhr.responseText);
+                    showAlert('Failed to load theme words', 'danger');
+                }
+            });
         }
     }
 
-    function startNewGame() {
-        window.location.href = '/';
-    }
-
-    function printPuzzle() {
-        window.print();
-    }
-
-    function copyShareLink() {
-        const shareUrl = $('#shareLink').val();
-        navigator.clipboard.writeText(shareUrl).then(() => {
-            // Show feedback
-            const originalText = $('#copyLink').html();
-            $('#copyLink').html('<i class="bi bi-check"></i>');
-            setTimeout(() => {
-                $('#copyLink').html(originalText);
-            }, 2000);
+    function generatePuzzle(words, options) {
+        // Safety check: ensure words is defined and is an array
+        if (!words || !Array.isArray(words) || words.length === 0) {
+            $('#loadingModal').modal('hide');
+            showAlert('No words available for this theme', 'danger');
+            return;
+        }
+        
+        // Determine grid size based on difficulty
+        const sizeMap = { easy: 10, medium: 15, hard: 20 };
+        const gridSize = sizeMap[options.difficulty] || 15;
+        
+        // Filter words based on difficulty
+        const filteredWords = words.filter(word => {
+            if (options.difficulty === 'easy') return word.length <= 6;
+            if (options.difficulty === 'medium') return word.length <= 10;
+            return true; // hard difficulty - all words
         });
-    }
-
-    function showWinModal() {
-        // Stop timer
-        if (gameState.timer) {
-            clearInterval(gameState.timer);
-        }
-
-        // Update final stats
-        $('#finalTime').text($('#timer').text());
-        $('#finalWords').text(gameState.foundWords.size);
-
-        // Show modal
-        $('#winModal').modal('show');
-
-        // Add celebration effect
-        $('.game-grid').addClass('celebration');
+        
+        // Take first 10-15 words depending on difficulty
+        const wordCount = options.difficulty === 'easy' ? 10 : 15;
+        const selectedWords = filteredWords.slice(0, wordCount);
+        
+        const puzzleData = {
+            words: selectedWords,
+            options: {
+                size: gridSize,
+                diagonals: options.diagonals,
+                reverse: options.reverse
+            }
+        };
+        
+        $.ajax({
+            url: '/api/generate',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(puzzleData),
+            success: function(response) {
+                $('#loadingModal').modal('hide');
+                
+                if (response.success) {
+                    currentGame = response.puzzle;
+                    // Redirect to play page with puzzle ID
+                    window.location.href = `/play?id=${response.id}`;
+                } else {
+                    showAlert(response.error || 'Failed to generate puzzle', 'danger');
+                }
+            },
+            error: function(xhr) {
+                $('#loadingModal').modal('hide');
+                const response = xhr.responseJSON;
+                showAlert(response?.error || 'Failed to generate puzzle', 'danger');
+            }
+        });
     }
 
     // Utility functions
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
+    function showAlert(message, type = 'info') {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Remove existing alerts
+        $('.alert').remove();
+        
+        // Add new alert at the top of the main content
+        $('main').prepend(alertHtml);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            $('.alert').fadeOut();
+        }, 5000);
     }
 
-    // Expose functions globally for debugging
-    window.WordSearchGame = {
-        gameState,
-        showHint,
-        startNewGame,
-        printPuzzle
+    function updateStats(stats) {
+        $('#totalPuzzles').text(stats.total_puzzles || 0);
+        $('#totalPlayers').text(stats.total_themes || 0);
+        $('#bestTime').text('--');
+    }
+
+    // Export functions for use in other scripts
+    window.WordSearchApp = {
+        currentUser,
+        selectedTheme,
+        currentGame,
+        showAlert,
+        updateAuthUI
     };
 
-})(jQuery);
-
-// Authentication functionality
-document.addEventListener('DOMContentLoaded', function () {
-    // Check if we're on the home page
-    if (window.location.pathname === '/') {
-        setupAuthForms();
-        // Note: setDefaultSelections is already called in initializeGame() for the home page
-    }
-});
-
-function setupAuthForms() {
-    // Login form handler
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            handleLogin();
-        });
-    }
-
-    // Register form handler
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            handleRegister();
-        });
-    }
-}
-
-function handleLogin() {
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
-
-    if (!username || !password) {
-        showAlert('Please enter both username and password', 'danger');
-        return;
-    }
-
-    fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
-                modal.hide();
-
-                // Show success message
-                showAlert('Login successful! Welcome back!', 'success');
-
-                // Update UI
-                updateAuthSection();
-
-                // Clear form
-                document.getElementById('loginForm').reset();
-            } else {
-                showAlert(data.message || 'Login failed', 'danger');
-            }
-        })
-        .catch(error => {
-            console.error('Login error:', error);
-            showAlert('Login failed. Please try again.', 'danger');
-        });
-}
-
-function handleRegister() {
-    const firstName = document.getElementById('registerFirstName').value;
-    const lastName = document.getElementById('registerLastName').value;
-    const username = document.getElementById('registerUsername').value;
-    const email = document.getElementById('registerEmail').value;
-    const password = document.getElementById('registerPassword').value;
-
-    if (!firstName || !lastName || !username || !email || !password) {
-        showAlert('Please fill in all fields', 'danger');
-        return;
-    }
-
-    if (password.length < 6) {
-        showAlert('Password must be at least 6 characters long', 'danger');
-        return;
-    }
-
-    fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            first_name: firstName,
-            last_name: lastName,
-            username,
-            email,
-            password
-        })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
-                modal.hide();
-
-                // Show personalized success message
-                const firstName = data.data.first_name || username;
-                showAlert(`Welcome, ${firstName}! Registration successful! Logging you in automatically...`, 'success');
-
-                // Clear form
-                document.getElementById('registerForm').reset();
-
-                // Auto-login the user
-                autoLoginAfterRegistration(username, password);
-            } else {
-                showAlert(data.message || 'Registration failed', 'danger');
-            }
-        })
-        .catch(error => {
-            console.error('Registration error:', error);
-            showAlert('Registration failed. Please try again.', 'danger');
-        });
-}
-
-function autoLoginAfterRegistration(username, password) {
-    // Wait a moment for the success message to show
-    setTimeout(() => {
-        fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show personalized welcome message
-                    const firstName = data.data.first_name || username;
-                    showAlert(`Welcome, ${firstName}! You are now logged in.`, 'success');
-
-                    // Update UI to show logged-in state
-                    updateAuthSection();
-
-                    // Redirect to home page or refresh
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    showAlert('Auto-login failed. Please login manually.', 'warning');
-                }
-            })
-            .catch(error => {
-                console.error('Auto-login error:', error);
-                showAlert('Auto-login failed. Please login manually.', 'warning');
-            });
-    }, 1000);
-}
-
-function showAlert(message, type) {
-    // Create alert element
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-
-    // Add to page
-    document.body.appendChild(alertDiv);
-
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
-}
+})();

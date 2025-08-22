@@ -6,56 +6,71 @@ namespace App\Services;
 
 class PuzzleStore
 {
-    private array $config;
     private string $storagePath;
+    private string $puzzlesPath;
 
-    public function __construct(array $config)
+    public function __construct()
     {
-        $this->config = $config;
-        $this->storagePath = $config['paths']['storage'] . '/puzzles';
+        $this->storagePath = __DIR__ . '/../../storage/';
+        $this->puzzlesPath = $this->storagePath . 'puzzles/';
         
-        // Ensure storage directory exists
+        // Ensure directories exist
+        $this->ensureDirectoriesExist();
+    }
+
+    private function ensureDirectoriesExist(): void
+    {
         if (!is_dir($this->storagePath)) {
             mkdir($this->storagePath, 0775, true);
         }
+        
+        if (!is_dir($this->puzzlesPath)) {
+            mkdir($this->puzzlesPath, 0775, true);
+        }
     }
 
-    public function save(array $puzzle): string
+    public function savePuzzle(array $puzzleData): string
     {
-        $id = $this->generateId();
-        $filename = $this->storagePath . '/' . $id . '.json';
+        $puzzleId = $puzzleData['id'] ?? $this->generatePuzzleId();
+        $filename = $this->puzzlesPath . $puzzleId . '.json';
         
-        $puzzleData = [
-            'id' => $id,
+        $puzzleToSave = [
+            'id' => $puzzleId,
+            'grid' => $puzzleData['grid'],
+            'words' => $puzzleData['words'],
+            'placed_words' => $puzzleData['placed_words'] ?? [],
+            'failed_words' => $puzzleData['failed_words'] ?? [],
+            'size' => $puzzleData['size'],
+            'options' => $puzzleData['options'] ?? [],
+            'seed' => $puzzleData['seed'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),
-            'grid' => $puzzle['grid'],
-            'words' => $puzzle['words'],
-            'placed' => $puzzle['placed'],
-            'size' => $puzzle['size'],
-            'seed' => $puzzle['seed'],
+            'theme' => $puzzleData['theme'] ?? 'unknown',
+            'difficulty' => $puzzleData['difficulty'] ?? 'medium'
         ];
         
-        if (file_put_contents($filename, json_encode($puzzleData, JSON_PRETTY_PRINT))) {
-            return $id;
+        $jsonData = json_encode($puzzleToSave, JSON_PRETTY_PRINT);
+        
+        if (file_put_contents($filename, $jsonData) === false) {
+            throw new \RuntimeException("Failed to save puzzle to file: {$filename}");
         }
         
-        throw new \RuntimeException('Failed to save puzzle');
+        return $puzzleId;
     }
 
-    public function load(string $id): ?array
+    public function getPuzzle(string $puzzleId): ?array
     {
-        $filename = $this->storagePath . '/' . $id . '.json';
+        $filename = $this->puzzlesPath . $puzzleId . '.json';
         
         if (!file_exists($filename)) {
             return null;
         }
         
-        $content = file_get_contents($filename);
-        if ($content === false) {
+        $jsonData = file_get_contents($filename);
+        if ($jsonData === false) {
             return null;
         }
         
-        $puzzle = json_decode($content, true);
+        $puzzle = json_decode($jsonData, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             return null;
         }
@@ -63,58 +78,168 @@ class PuzzleStore
         return $puzzle;
     }
 
-    public function delete(string $id): bool
+    public function deletePuzzle(string $puzzleId): bool
     {
-        $filename = $this->storagePath . '/' . $id . '.json';
+        $filename = $this->puzzlesPath . $puzzleId . '.json';
         
         if (file_exists($filename)) {
             return unlink($filename);
         }
         
-        return false;
+        return true;
     }
 
-    public function list(): array
+    public function listPuzzles(int $limit = 100): array
     {
         $puzzles = [];
-        $files = glob($this->storagePath . '/*.json');
+        $files = glob($this->puzzlesPath . '*.json');
         
+        // Sort by creation time (newest first)
+        usort($files, function($a, $b) {
+            return filemtime($b) - filemtime($a);
+        });
+        
+        $count = 0;
         foreach ($files as $file) {
-            $id = basename($file, '.json');
-            $puzzle = $this->load($id);
+            if ($count >= $limit) {
+                break;
+            }
+            
+            $puzzleId = basename($file, '.json');
+            $puzzle = $this->getPuzzle($puzzleId);
+            
             if ($puzzle) {
                 $puzzles[] = [
-                    'id' => $id,
-                    'created_at' => $puzzle['created_at'],
+                    'id' => $puzzleId,
+                    'theme' => $puzzle['theme'] ?? 'unknown',
+                    'difficulty' => $puzzle['difficulty'] ?? 'medium',
                     'size' => $puzzle['size'],
                     'word_count' => count($puzzle['words']),
+                    'created_at' => $puzzle['created_at'] ?? 'unknown'
                 ];
+                $count++;
             }
         }
-        
-        // Sort by creation date (newest first)
-        usort($puzzles, function($a, $b) {
-            return strtotime($b['created_at']) - strtotime($a['created_at']);
-        });
         
         return $puzzles;
     }
 
-    private function generateId(): string
+    public function searchPuzzles(array $criteria): array
     {
-        // Generate a short, unique ID
-        $timestamp = time();
-        $random = mt_rand(1000, 9999);
-        $id = base_convert($timestamp . $random, 10, 36);
+        $puzzles = [];
+        $files = glob($this->puzzlesPath . '*.json');
         
-        // Ensure it's unique
-        $counter = 0;
-        $originalId = $id;
-        while (file_exists($this->storagePath . '/' . $id . '.json')) {
-            $counter++;
-            $id = $originalId . base_convert($counter, 10, 36);
+        foreach ($files as $file) {
+            $puzzleId = basename($file, '.json');
+            $puzzle = $this->getPuzzle($puzzleId);
+            
+            if ($puzzle && $this->matchesCriteria($puzzle, $criteria)) {
+                $puzzles[] = $puzzle;
+            }
         }
         
-        return $id;
+        return $puzzles;
+    }
+
+    private function matchesCriteria(array $puzzle, array $criteria): bool
+    {
+        foreach ($criteria as $key => $value) {
+            if (!isset($puzzle[$key])) {
+                return false;
+            }
+            
+            if (is_array($value)) {
+                if (!in_array($puzzle[$key], $value)) {
+                    return false;
+                }
+            } else {
+                if ($puzzle[$key] !== $value) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    public function getPuzzleStats(): array
+    {
+        $files = glob($this->puzzlesPath . '*.json');
+        $totalPuzzles = count($files);
+        
+        $themes = [];
+        $difficulties = [];
+        $sizes = [];
+        
+        foreach ($files as $file) {
+            $puzzleId = basename($file, '.json');
+            $puzzle = $this->getPuzzle($puzzleId);
+            
+            if ($puzzle) {
+                $theme = $puzzle['theme'] ?? 'unknown';
+                $difficulty = $puzzle['difficulty'] ?? 'medium';
+                $size = $puzzle['size'] ?? 15;
+                
+                $themes[$theme] = ($themes[$theme] ?? 0) + 1;
+                $difficulties[$difficulty] = ($difficulties[$difficulty] ?? 0) + 1;
+                $sizes[$size] = ($sizes[$size] ?? 0) + 1;
+            }
+        }
+        
+        return [
+            'total_puzzles' => $totalPuzzles,
+            'themes' => $themes,
+            'difficulties' => $difficulties,
+            'sizes' => $sizes
+        ];
+    }
+
+    public function cleanupOldPuzzles(int $daysOld = 30): int
+    {
+        $cutoffTime = time() - ($daysOld * 24 * 60 * 60);
+        $deletedCount = 0;
+        
+        $files = glob($this->puzzlesPath . '*.json');
+        
+        foreach ($files as $file) {
+            if (filemtime($file) < $cutoffTime) {
+                if (unlink($file)) {
+                    $deletedCount++;
+                }
+            }
+        }
+        
+        return $deletedCount;
+    }
+
+    private function generatePuzzleId(): string
+    {
+        return 'file_puzzle_' . uniqid() . '_' . mt_rand(1000, 9999);
+    }
+
+    public function isAvailable(): bool
+    {
+        return is_dir($this->puzzlesPath) && is_writable($this->puzzlesPath);
+    }
+
+    public function getStorageInfo(): array
+    {
+        $totalSize = 0;
+        $fileCount = 0;
+        
+        $files = glob($this->puzzlesPath . '*.json');
+        
+        foreach ($files as $file) {
+            $totalSize += filesize($file);
+            $fileCount++;
+        }
+        
+        return [
+            'path' => $this->puzzlesPath,
+            'file_count' => $fileCount,
+            'total_size_bytes' => $totalSize,
+            'total_size_mb' => round($totalSize / 1024 / 1024, 2),
+            'writable' => is_writable($this->puzzlesPath)
+        ];
     }
 }
