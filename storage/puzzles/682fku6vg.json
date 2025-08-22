@@ -1,0 +1,240 @@
+{
+    "id": "682fku6vg",
+    "created_at": "2025-08-22 18:20:31",
+    "grid": [
+        [
+            "I",
+            "T",
+            "M",
+            "T",
+            "D",
+            "V",
+            "W",
+            "T",
+            "J",
+            "V",
+            "D",
+            "X"
+        ],
+        [
+            "D",
+            "D",
+            "I",
+            "Y",
+            "I",
+            "K",
+            "S",
+            "Z",
+            "V",
+            "O",
+            "L",
+            "M"
+        ],
+        [
+            "L",
+            "F",
+            "D",
+            "F",
+            "V",
+            "V",
+            "B",
+            "T",
+            "N",
+            "R",
+            "T",
+            "O"
+        ],
+        [
+            "P",
+            "W",
+            "S",
+            "P",
+            "D",
+            "M",
+            "L",
+            "I",
+            "M",
+            "Q",
+            "Z",
+            "W"
+        ],
+        [
+            "M",
+            "D",
+            "J",
+            "E",
+            "Z",
+            "L",
+            "B",
+            "R",
+            "U",
+            "V",
+            "X",
+            "Y"
+        ],
+        [
+            "F",
+            "R",
+            "H",
+            "H",
+            "W",
+            "L",
+            "K",
+            "E",
+            "J",
+            "Y",
+            "B",
+            "B"
+        ],
+        [
+            "M",
+            "Z",
+            "B",
+            "U",
+            "H",
+            "M",
+            "U",
+            "L",
+            "A",
+            "G",
+            "K",
+            "A"
+        ],
+        [
+            "U",
+            "T",
+            "D",
+            "P",
+            "N",
+            "O",
+            "K",
+            "A",
+            "P",
+            "U",
+            "O",
+            "L"
+        ],
+        [
+            "Q",
+            "Y",
+            "W",
+            "A",
+            "W",
+            "G",
+            "Q",
+            "N",
+            "A",
+            "L",
+            "B",
+            "A"
+        ],
+        [
+            "O",
+            "R",
+            "E",
+            "G",
+            "O",
+            "N",
+            "A",
+            "D",
+            "N",
+            "V",
+            "F",
+            "S"
+        ],
+        [
+            "B",
+            "J",
+            "I",
+            "K",
+            "W",
+            "B",
+            "R",
+            "R",
+            "W",
+            "T",
+            "Y",
+            "K"
+        ],
+        [
+            "X",
+            "C",
+            "F",
+            "O",
+            "A",
+            "U",
+            "R",
+            "A",
+            "Y",
+            "Z",
+            "S",
+            "A"
+        ]
+    ],
+    "words": [
+        "IRELAND",
+        "HUNGARY",
+        "OREGON",
+        "ALASKA",
+        "JAPAN"
+    ],
+    "placed": [
+        {
+            "word": "IRELAND",
+            "placed": "IRELAND",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 3,
+            "startCol": 7
+        },
+        {
+            "word": "HUNGARY",
+            "placed": "HUNGARY",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 5,
+            "startCol": 2
+        },
+        {
+            "word": "OREGON",
+            "placed": "OREGON",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 9,
+            "startCol": 0
+        },
+        {
+            "word": "ALASKA",
+            "placed": "ALASKA",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 6,
+            "startCol": 11
+        },
+        {
+            "word": "JAPAN",
+            "placed": "JAPAN",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 5,
+            "startCol": 8
+        }
+    ],
+    "size": 12,
+    "seed": 1227591816
+}

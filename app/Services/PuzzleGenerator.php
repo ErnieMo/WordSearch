@@ -143,7 +143,7 @@ class PuzzleGenerator
         $bestScore = -1;
         
         // Try multiple random positions and score them
-        for ($attempt = 0; $attempt < 100; $attempt++) {
+        for ($attempt = 0; $attempt < 200; $attempt++) {
             $startRow = mt_rand(0, $this->size - 1);
             $startCol = mt_rand(0, $this->size - 1);
             
@@ -249,10 +249,14 @@ class PuzzleGenerator
         $dr = $direction[0];
         $dc = $direction[1];
         
-        // Prefer positions away from the center (spread to edges)
+        // Balanced distribution - don't heavily favor edges
         $center = (int)($this->size / 2);
         $distanceFromCenter = abs($startRow - $center) + abs($startCol - $center);
-        $score += $distanceFromCenter * 2;
+        
+        // Prefer moderate distance from center (not too close, not too far)
+        $optimalDistance = (int)($this->size / 3); // Prefer positions around 1/3 from center
+        $distanceScore = -(int)abs($distanceFromCenter - $optimalDistance);
+        $score += $distanceScore;
         
         // Prefer positions that don't overlap with existing words
         $overlapPenalty = 0;
@@ -271,8 +275,8 @@ class PuzzleGenerator
         $quadrantCount = $this->countWordsInQuadrant($quadrant);
         $score += (4 - $quadrantCount) * 3; // Prefer less crowded quadrants
         
-        // Prefer positions that use the full board dimensions
-        $score += min($startRow, $this->size - 1 - $startRow) + min($startCol, $this->size - 1 - $startCol);
+        // Random factor to add variety (avoid predictable patterns)
+        $score += mt_rand(-5, 5);
         
         return $score;
     }
