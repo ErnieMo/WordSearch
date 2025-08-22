@@ -1,0 +1,228 @@
+{
+    "id": "682f9itps",
+    "created_at": "2025-08-22 17:48:50",
+    "grid": [
+        [
+            "M",
+            "O",
+            "N",
+            "K",
+            "E",
+            "Y",
+            "A",
+            "I",
+            "G",
+            "C"
+        ],
+        [
+            "Y",
+            "D",
+            "O",
+            "V",
+            "E",
+            "P",
+            "R",
+            "B",
+            "E",
+            "H"
+        ],
+        [
+            "J",
+            "E",
+            "L",
+            "L",
+            "Y",
+            "F",
+            "I",
+            "S",
+            "H",
+            "A"
+        ],
+        [
+            "D",
+            "G",
+            "H",
+            "A",
+            "A",
+            "C",
+            "F",
+            "F",
+            "N",
+            "M"
+        ],
+        [
+            "W",
+            "V",
+            "M",
+            "N",
+            "Z",
+            "K",
+            "H",
+            "R",
+            "M",
+            "E"
+        ],
+        [
+            "C",
+            "J",
+            "B",
+            "Q",
+            "U",
+            "D",
+            "Z",
+            "O",
+            "M",
+            "L"
+        ],
+        [
+            "M",
+            "F",
+            "E",
+            "O",
+            "Z",
+            "K",
+            "T",
+            "G",
+            "C",
+            "E"
+        ],
+        [
+            "L",
+            "E",
+            "O",
+            "P",
+            "A",
+            "R",
+            "D",
+            "T",
+            "A",
+            "O"
+        ],
+        [
+            "N",
+            "V",
+            "L",
+            "F",
+            "Q",
+            "V",
+            "B",
+            "A",
+            "R",
+            "N"
+        ],
+        [
+            "H",
+            "B",
+            "A",
+            "D",
+            "G",
+            "E",
+            "R",
+            "P",
+            "P",
+            "B"
+        ]
+    ],
+    "words": [
+        "JELLYFISH",
+        "CHAMELEON",
+        "LEOPARD",
+        "MONKEY",
+        "BADGER",
+        "DOVE",
+        "CARP",
+        "FROG"
+    ],
+    "placed": [
+        {
+            "word": "JELLYFISH",
+            "placed": "JELLYFISH",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 2,
+            "startCol": 0
+        },
+        {
+            "word": "CHAMELEON",
+            "placed": "CHAMELEON",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 9
+        },
+        {
+            "word": "LEOPARD",
+            "placed": "LEOPARD",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 7,
+            "startCol": 0
+        },
+        {
+            "word": "MONKEY",
+            "placed": "MONKEY",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 0
+        },
+        {
+            "word": "BADGER",
+            "placed": "BADGER",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 9,
+            "startCol": 1
+        },
+        {
+            "word": "DOVE",
+            "placed": "DOVE",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 1,
+            "startCol": 1
+        },
+        {
+            "word": "CARP",
+            "placed": "CARP",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 6,
+            "startCol": 8
+        },
+        {
+            "word": "FROG",
+            "placed": "FROG",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 3,
+            "startCol": 7
+        }
+    ],
+    "size": 10,
+    "seed": 2067075838
+}

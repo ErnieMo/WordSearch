@@ -94,6 +94,12 @@ ob_start();
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="food">
                                     <i class="bi bi-cup-hot"></i> Food
                                 </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="automotive">
+                                    <i class="bi bi-car-front"></i> Automotive
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="medical">
+                                    <i class="bi bi-heart-pulse"></i> Medical
+                                </button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="clear">
                                     <i class="bi bi-trash"></i> Clear
                                 </button>

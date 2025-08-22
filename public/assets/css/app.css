@@ -14,7 +14,8 @@
     margin: 0;
 }
 
-.game-grid td {
+.game-grid td,
+.game-grid .grid-cell {
     width: 40px;
     height: 40px;
     text-align: center;
@@ -28,23 +29,27 @@
     position: relative;
 }
 
-.game-grid td:hover {
+.game-grid td:hover,
+.game-grid .grid-cell:hover {
     background-color: #e3f2fd;
     transform: scale(1.05);
 }
 
-.game-grid td.selected {
+.game-grid td.selected,
+.game-grid .grid-cell.selected {
     background-color: #007bff !important;
     color: white !important;
     transform: scale(1.1);
 }
 
-.game-grid td.found {
+.game-grid td.found,
+.game-grid .grid-cell.found {
     background-color: #28a745 !important;
     color: white !important;
 }
 
-.game-grid td.hint {
+.game-grid td.hint,
+.game-grid .grid-cell.hint {
     background-color: #ffc107 !important;
     color: #212529 !important;
     animation: pulse 1s infinite;
@@ -239,4 +244,28 @@
     100% {
         transform: scale(1);
     }
+}
+
+/* Theme and Difficulty Cards */
+.theme-card,
+.difficulty-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.theme-card:hover,
+.difficulty-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.theme-card.border-primary,
+.difficulty-card.border-primary {
+    border-width: 3px !important;
+    box-shadow: 0 0 20px rgba(13, 110, 253, 0.3);
+}
+
+.theme-checkmark,
+.difficulty-checkmark {
+    z-index: 10;
 }

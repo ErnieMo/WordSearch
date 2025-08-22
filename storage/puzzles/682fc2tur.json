@@ -1,0 +1,483 @@
+{
+    "id": "682fc2tur",
+    "created_at": "2025-08-22 17:56:00",
+    "grid": [
+        [
+            "G",
+            "B",
+            "U",
+            "C",
+            "K",
+            "E",
+            "T",
+            " ",
+            "S",
+            "E",
+            "A",
+            "T",
+            "R",
+            "M",
+            "P"
+        ],
+        [
+            "T",
+            "E",
+            "U",
+            "G",
+            "G",
+            "F",
+            "Z",
+            "D",
+            "E",
+            "P",
+            "Q",
+            "R",
+            "O",
+            "E",
+            "O"
+        ],
+        [
+            "W",
+            "W",
+            "E",
+            "P",
+            "O",
+            "Z",
+            "D",
+            "F",
+            "H",
+            "F",
+            "I",
+            "T",
+            "L",
+            "R",
+            "W"
+        ],
+        [
+            "E",
+            "U",
+            "X",
+            "L",
+            "V",
+            "C",
+            "X",
+            "Y",
+            "R",
+            "M",
+            "T",
+            "F",
+            "K",
+            "C",
+            "E"
+        ],
+        [
+            "S",
+            "L",
+            "F",
+            "I",
+            "Y",
+            "N",
+            "Z",
+            "E",
+            "M",
+            "I",
+            "B",
+            "P",
+            "S",
+            "E",
+            "R"
+        ],
+        [
+            "T",
+            "I",
+            "E",
+            "J",
+            "U",
+            "A",
+            "F",
+            "N",
+            "N",
+            "R",
+            "I",
+            "J",
+            "T",
+            "D",
+            " "
+        ],
+        [
+            "L",
+            "N",
+            "A",
+            "P",
+            "Z",
+            "O",
+            "E",
+            "W",
+            "E",
+            "R",
+            "C",
+            "L",
+            "R",
+            "E",
+            "S"
+        ],
+        [
+            "A",
+            "G",
+            "D",
+            "O",
+            "O",
+            "R",
+            "U",
+            "L",
+            "A",
+            "Y",
+            "N",
+            "N",
+            "I",
+            "S",
+            "U"
+        ],
+        [
+            "K",
+            "X",
+            "T",
+            "W",
+            "A",
+            "V",
+            "S",
+            "R",
+            "S",
+            "B",
+            "O",
+            "Q",
+            "Z",
+            "A",
+            "N"
+        ],
+        [
+            "E",
+            "U",
+            "B",
+            "L",
+            "N",
+            "Y",
+            "R",
+            "H",
+            "F",
+            "G",
+            "G",
+            "O",
+            "K",
+            "X",
+            "R"
+        ],
+        [
+            "A",
+            "U",
+            "C",
+            "O",
+            "R",
+            "E",
+            "I",
+            "Z",
+            "A",
+            "N",
+            "S",
+            "G",
+            "S",
+            "J",
+            "O"
+        ],
+        [
+            "S",
+            "M",
+            "X",
+            "H",
+            "F",
+            "V",
+            "W",
+            "W",
+            "O",
+            "Z",
+            "Z",
+            "G",
+            "K",
+            "W",
+            "O"
+        ],
+        [
+            "R",
+            "X",
+            "C",
+            "U",
+            "J",
+            "E",
+            "C",
+            "H",
+            "S",
+            "E",
+            "R",
+            "E",
+            "S",
+            "M",
+            "F"
+        ],
+        [
+            "D",
+            "O",
+            "N",
+            "G",
+            "F",
+            "E",
+            "N",
+            "G",
+            "Q",
+            "N",
+            "D",
+            "S",
+            "A",
+            "I",
+            "C"
+        ],
+        [
+            "L",
+            "A",
+            "N",
+            "D",
+            " ",
+            "R",
+            "O",
+            "V",
+            "E",
+            "R",
+            "A",
+            "Z",
+            "E",
+            "V",
+            "X"
+        ]
+    ],
+    "words": [
+        "POWER SUNROOF",
+        "BUCKET SEAT",
+        "LAND ROVER",
+        "SUBWOOFER",
+        "WESTLAKE",
+        "MERCEDES",
+        "DONGFENG",
+        "CHRYSLER",
+        "MCLAREN",
+        "FERRARI",
+        "AUTOZAZ",
+        "HONGQI",
+        "WULING",
+        "GEELY",
+        "SERES",
+        "WAGON",
+        "NITTO",
+        "SAIC"
+    ],
+    "placed": [
+        {
+            "word": "POWER SUNROOF",
+            "placed": "POWER SUNROOF",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 14
+        },
+        {
+            "word": "BUCKET SEAT",
+            "placed": "BUCKET SEAT",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 1
+        },
+        {
+            "word": "LAND ROVER",
+            "placed": "LAND ROVER",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 14,
+            "startCol": 0
+        },
+        {
+            "word": "SUBWOOFER",
+            "placed": "SUBWOOFER",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 11,
+            "startCol": 0
+        },
+        {
+            "word": "WESTLAKE",
+            "placed": "WESTLAKE",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 2,
+            "startCol": 0
+        },
+        {
+            "word": "MERCEDES",
+            "placed": "MERCEDES",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 13
+        },
+        {
+            "word": "DONGFENG",
+            "placed": "DONGFENG",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 13,
+            "startCol": 0
+        },
+        {
+            "word": "CHRYSLER",
+            "placed": "CHRYSLER",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 12,
+            "startCol": 2
+        },
+        {
+            "word": "MCLAREN",
+            "placed": "MCLAREN",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 11,
+            "startCol": 1
+        },
+        {
+            "word": "FERRARI",
+            "placed": "FERRARI",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 11,
+            "startCol": 4
+        },
+        {
+            "word": "AUTOZAZ",
+            "placed": "AUTOZAZ",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 10,
+            "startCol": 0
+        },
+        {
+            "word": "HONGQI",
+            "placed": "HONGQI",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 12,
+            "startCol": 7
+        },
+        {
+            "word": "WULING",
+            "placed": "WULING",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 2,
+            "startCol": 1
+        },
+        {
+            "word": "GEELY",
+            "placed": "GEELY",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 0
+        },
+        {
+            "word": "SERES",
+            "placed": "SERES",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 12,
+            "startCol": 8
+        },
+        {
+            "word": "WAGON",
+            "placed": "WAGON",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 11,
+            "startCol": 7
+        },
+        {
+            "word": "NITTO",
+            "placed": "NITTO",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 5,
+            "startCol": 8
+        },
+        {
+            "word": "SAIC",
+            "placed": "SAIC",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 13,
+            "startCol": 11
+        }
+    ],
+    "size": 15,
+    "seed": 463673615
+}

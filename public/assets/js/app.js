@@ -13,7 +13,9 @@
         timer: null,
         isSelecting: false,
         selectionStart: null,
-        currentSelection: []
+        currentSelection: [],
+        selectedTheme: null,
+        selectedDifficulty: null
     };
 
     // Preset word lists
@@ -45,6 +47,7 @@
         $('.btn-difficulty').on('click', handleDifficultySelection);
         $('.btn-theme').on('click', handleThemeSelection);
         $('#quickStart').on('click', handleQuickStart);
+        $('#startGameBtn').on('click', handleStartGame);
         $('#startGame').on('click', startGameFromModal);
 
         // Create page events
@@ -63,39 +66,114 @@
         $('#copyLink').on('click', copyShareLink);
 
         // Grid interaction events
-        $(document).on('mousedown touchstart', '.game-grid td', startSelection);
-        $(document).on('mousemove touchmove', '.game-grid td', updateSelection);
-        $(document).on('mouseup touchend', '.game-grid td', endSelection);
+        $(document).on('mousedown touchstart', '.game-grid .grid-cell', startSelection);
+        $(document).on('mousemove touchmove', '.game-grid .grid-cell', updateSelection);
+        $(document).on('mouseup touchend', '.game-grid .grid-cell', endSelection);
     }
 
     // Home page functions
     function handleDifficultySelection() {
         const difficulty = $(this).data('difficulty');
-        const size = $(this).data('size');
 
-        $('#selectedDifficulty').text(difficulty.charAt(0).toUpperCase() + difficulty.slice(1));
-        $('#difficulty').val(difficulty);
-        $('#gridSize').val(size);
+        // Clear previous difficulty selection
+        $('.difficulty-card').removeClass('border-primary');
+        $('.difficulty-checkmark').hide();
 
-        // Set options based on difficulty
-        if (difficulty === 'easy') {
-            $('#allowDiagonals').prop('checked', false);
-            $('#allowReverse').prop('checked', false);
-        } else if (difficulty === 'medium') {
-            $('#allowDiagonals').prop('checked', true);
-            $('#allowReverse').prop('checked', false);
-        } else {
-            $('#allowDiagonals').prop('checked', true);
-            $('#allowReverse').prop('checked', true);
+        // Highlight selected difficulty
+        $(this).closest('.difficulty-card').addClass('border-primary');
+        $(this).closest('.difficulty-card').find('.difficulty-checkmark').show();
+
+        // Store selected difficulty
+        gameState.selectedDifficulty = difficulty;
+
+        // Enable start game if both theme and difficulty are selected
+        if (gameState.selectedTheme && gameState.selectedDifficulty) {
+            $('#startGameBtn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
         }
-
-        $('#gameOptionsModal').modal('show');
     }
 
     function handleThemeSelection() {
         const theme = $(this).data('theme');
-        $('#selectedTheme').text(theme.charAt(0).toUpperCase() + theme.slice(1));
-        $('#theme').val(theme);
+
+        // Clear previous theme selection
+        $('.theme-card').removeClass('border-primary');
+        $('.theme-checkmark').hide();
+
+        // Highlight selected theme
+        $(this).closest('.theme-card').addClass('border-primary');
+        $(this).closest('.theme-card').find('.theme-checkmark').show();
+
+        // Store selected theme
+        gameState.selectedTheme = theme;
+
+        // Enable start game if both theme and difficulty are selected
+        if (gameState.selectedTheme && gameState.selectedDifficulty) {
+            $('#startGameBtn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
+        }
+    }
+
+    function handleStartGame() {
+        if (!gameState.selectedTheme || !gameState.selectedDifficulty) {
+            alert('Please select both a theme and difficulty level.');
+            return;
+        }
+
+        // Get difficulty settings
+        const difficultySettings = {
+            easy: { size: 10, diagonals: false, reverse: false, wordCount: 8 },
+            medium: { size: 15, diagonals: true, reverse: false, wordCount: 18 },
+            hard: { size: 20, diagonals: true, reverse: true, wordCount: 25 }
+        };
+
+        const settings = difficultySettings[gameState.selectedDifficulty];
+
+        // Load theme words from API
+        $.get(`/api/themes`)
+            .done(function (themes) {
+                const themeData = themes[gameState.selectedTheme];
+                if (themeData && themeData.words) {
+                    // Randomly select words for the difficulty level
+                    const shuffledWords = themeData.words.sort(() => 0.5 - Math.random());
+                    const selectedWords = shuffledWords.slice(0, Math.min(settings.wordCount, themeData.words.length));
+
+                    // Generate puzzle
+                    generatePuzzle(selectedWords, settings);
+                } else {
+                    alert('Error loading theme words. Please try again.');
+                }
+            })
+            .fail(function () {
+                alert('Error loading theme. Please try again.');
+            });
+    }
+
+    function generatePuzzle(words, settings) {
+        const requestData = {
+            words: words,
+            options: {
+                size: settings.size,
+                diagonals: settings.diagonals,
+                reverse: settings.reverse
+            }
+        };
+
+        $.ajax({
+            url: '/api/generate',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(requestData),
+            success: function (response) {
+                if (response.id) {
+                    // Redirect to play page with the new puzzle
+                    window.location.href = `/play?id=${response.id}`;
+                } else {
+                    alert('Error generating puzzle. Please try again.');
+                }
+            },
+            error: function () {
+                alert('Error generating puzzle. Please try again.');
+            }
+        });
     }
 
     function handleQuickStart() {
@@ -288,6 +366,7 @@
             method: 'GET',
             success: function (response) {
                 gameState.puzzle = response;
+                gameState.foundWords = new Set(); // Reset found words for new puzzle
                 renderGame();
                 startTimer();
             },
@@ -331,14 +410,23 @@
         for (let row = 0; row < grid.length; row++) {
             html += '<tr>';
             for (let col = 0; col < grid[row].length; col++) {
-                const cellClass = interactive ? 'class="grid-cell"' : '';
-                const dataAttrs = interactive ? `data-r="${row}" data-c="${col}" data-ch="${grid[row][col]}"` : '';
-                html += `<td ${cellClass} ${dataAttrs}>${grid[row][col]}</td>`;
+                let cellHtml = '<td';
+                if (interactive) {
+                    cellHtml += ' class="grid-cell"';
+                    cellHtml += ` data-r="${row}" data-c="${col}" data-ch="${grid[row][col]}"`;
+                }
+                cellHtml += `>${grid[row][col]}</td>`;
+                html += cellHtml;
             }
             html += '</tr>';
         }
 
         html += '</table></div>';
+
+        if (interactive) {
+            console.log('Rendered interactive grid HTML:', html);
+        }
+
         return html;
     }
 
@@ -371,11 +459,13 @@
         if (!gameState.puzzle) return;
 
         e.preventDefault();
+        console.log('Selection started on:', $(this).data('r'), $(this).data('c'));
         gameState.isSelecting = true;
         gameState.selectionStart = { row: $(this).data('r'), col: $(this).data('c') };
         gameState.currentSelection = [gameState.selectionStart];
 
         $(this).addClass('selected');
+        console.log('Selection start:', gameState.selectionStart);
     }
 
     function updateSelection(e) {
@@ -385,7 +475,7 @@
         const currentCell = { row: $(this).data('r'), col: $(this).data('c') };
 
         // Clear previous selection
-        $('.game-grid td').removeClass('selected');
+        $('.game-grid .grid-cell').removeClass('selected');
 
         // Calculate selection path
         const path = calculateSelectionPath(gameState.selectionStart, currentCell);
@@ -393,7 +483,7 @@
 
         // Highlight selection
         path.forEach(pos => {
-            $(`.game-grid td[data-r="${pos.row}"][data-c="${pos.col}"]`).addClass('selected');
+            $(`.game-grid .grid-cell[data-r="${pos.row}"][data-c="${pos.col}"]`).addClass('selected');
         });
     }
 
@@ -401,14 +491,18 @@
         if (!gameState.isSelecting || !gameState.puzzle) return;
 
         e.preventDefault();
+        console.log('Selection ended, checking word...');
         gameState.isSelecting = false;
 
         // Clear selection highlighting
-        $('.game-grid td').removeClass('selected');
+        $('.game-grid .grid-cell').removeClass('selected');
 
         // Check if selection forms a valid word
         if (gameState.currentSelection.length > 1) {
+            console.log('Selection length > 1, calling checkWordSelection');
             checkWordSelection();
+        } else {
+            console.log('Selection too short, length:', gameState.currentSelection.length);
         }
     }
 
@@ -436,14 +530,26 @@
     function checkWordSelection() {
         if (!gameState.puzzle) return;
 
+        // Ensure foundWords is always a Set
+        if (!gameState.foundWords || !(gameState.foundWords instanceof Set)) {
+            console.log('Resetting foundWords to new Set');
+            gameState.foundWords = new Set();
+        }
+
         // Get the word from the selection
         const word = gameState.currentSelection
             .map(pos => gameState.puzzle.grid[pos.row][pos.col])
             .join('');
 
+        console.log('Checking word selection:', word);
+        console.log('Current selection path:', gameState.currentSelection);
+        console.log('Available words:', gameState.puzzle.words);
+
         // Check if it's a valid word (forward or reverse)
         const validWords = gameState.puzzle.words;
         const isValid = validWords.includes(word) || validWords.includes(word.split('').reverse().join(''));
+
+        console.log('Word valid?', isValid);
 
         if (isValid && !gameState.foundWords.has(word)) {
             // Mark word as found
@@ -451,7 +557,7 @@
 
             // Highlight found cells
             gameState.currentSelection.forEach(pos => {
-                $(`.game-grid td[data-r="${pos.row}"][data-c="${pos.col}"]`).addClass('found');
+                $(`.game-grid .grid-cell[data-r="${pos.row}"][data-c="${pos.col}"]`).addClass('found');
             });
 
             // Mark word in list as found
@@ -470,30 +576,52 @@
     function showHint() {
         if (!gameState.puzzle) return;
 
+        // Ensure foundWords is always a Set
+        if (!gameState.foundWords || !(gameState.foundWords instanceof Set)) {
+            console.log('Resetting foundWords to new Set in showHint');
+            gameState.foundWords = new Set();
+        }
+
         // Find a random unfound word
         const unfoundWords = gameState.puzzle.words.filter(word => !gameState.foundWords.has(word));
-        if (unfoundWords.length === 0) return;
+        if (unfoundWords.length === 0) {
+            alert('All words have been found!');
+            return;
+        }
 
         const hintWord = unfoundWords[Math.floor(Math.random() * unfoundWords.length)];
+        console.log('Showing hint for word:', hintWord);
 
         // Find the word in the grid and highlight it temporarily
         const wordInfo = gameState.puzzle.placed.find(p => p.word === hintWord);
-        if (wordInfo) {
+        if (wordInfo && wordInfo.startRow !== undefined && wordInfo.startCol !== undefined) {
+            console.log('Word placement info:', wordInfo);
+
             // Highlight the word cells
             const direction = wordInfo.direction;
-            const startRow = wordInfo.startRow || 0;
-            const startCol = wordInfo.startCol || 0;
+            const startRow = wordInfo.startRow;
+            const startCol = wordInfo.startCol;
 
             for (let i = 0; i < hintWord.length; i++) {
                 const row = startRow + (direction[0] * i);
                 const col = startCol + (direction[1] * i);
-                $(`.game-grid td[data-r="${row}"][data-c="${col}"]`).addClass('hint');
+                const cell = $(`.game-grid .grid-cell[data-r="${row}"][data-c="${col}"]`);
+                if (cell.length > 0) {
+                    cell.addClass('hint');
+                    console.log(`Highlighting cell [${row},${col}] with letter ${hintWord[i]}`);
+                } else {
+                    console.warn(`Cell [${row},${col}] not found in grid`);
+                }
             }
 
             // Remove hint after 3 seconds
             setTimeout(() => {
-                $('.game-grid td').removeClass('hint');
+                $('.game-grid .grid-cell').removeClass('hint');
+                console.log('Hint removed');
             }, 3000);
+        } else {
+            console.error('Word placement info missing or incomplete:', wordInfo);
+            alert('Hint system error: Could not locate word placement');
         }
     }
 

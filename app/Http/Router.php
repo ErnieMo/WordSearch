@@ -69,6 +69,11 @@ class Router
                     return $this->handleGetPuzzle($matches[1]);
                 }
                 break;
+            case 'themes':
+                if ($method === 'GET') {
+                    return $this->handleGetThemes();
+                }
+                break;
             case 'validate':
                 if ($method === 'POST') {
                     return $this->handleValidateWord();
@@ -160,5 +165,14 @@ class Router
         }
         
         return true;
+    }
+
+    private function handleGetThemes(): string
+    {
+        $themeService = new \App\Services\ThemeService($this->config);
+        $themes = $themeService->getAvailableThemes();
+        
+        header('Content-Type: application/json');
+        return json_encode($themes);
     }
 }

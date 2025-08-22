@@ -1,0 +1,252 @@
+{
+    "id": "682evwzzw",
+    "created_at": "2025-08-22 17:10:45",
+    "grid": [
+        [
+            "K",
+            "H",
+            "D",
+            "O",
+            "Q",
+            "P",
+            "Z",
+            "R",
+            "M",
+            "T",
+            "M",
+            "N"
+        ],
+        [
+            "O",
+            "E",
+            "O",
+            "W",
+            "O",
+            "D",
+            "E",
+            "Q",
+            "O",
+            "A",
+            "O",
+            "J"
+        ],
+        [
+            "M",
+            "F",
+            "Y",
+            "T",
+            "Y",
+            "T",
+            "T",
+            "K",
+            "N",
+            "B",
+            "U",
+            "W"
+        ],
+        [
+            "R",
+            "G",
+            "P",
+            "B",
+            "U",
+            "D",
+            "W",
+            "W",
+            "I",
+            "L",
+            "S",
+            "Q"
+        ],
+        [
+            "N",
+            "A",
+            "L",
+            "P",
+            "O",
+            "Q",
+            "H",
+            "I",
+            "T",
+            "E",
+            "E",
+            "A"
+        ],
+        [
+            "L",
+            "N",
+            "M",
+            "S",
+            "U",
+            "A",
+            "U",
+            "S",
+            "O",
+            "T",
+            "O",
+            "S"
+        ],
+        [
+            "A",
+            "O",
+            "H",
+            "Z",
+            "G",
+            "K",
+            "R",
+            "U",
+            "R",
+            "O",
+            "T",
+            "X"
+        ],
+        [
+            "C",
+            "K",
+            "V",
+            "Q",
+            "Y",
+            "R",
+            "Y",
+            "D",
+            "W",
+            "L",
+            "B",
+            "A"
+        ],
+        [
+            "R",
+            "U",
+            "S",
+            "Y",
+            "S",
+            "A",
+            "E",
+            "D",
+            "G",
+            "K",
+            "U",
+            "O"
+        ],
+        [
+            "P",
+            "Y",
+            "H",
+            "F",
+            "X",
+            "W",
+            "O",
+            "V",
+            "D",
+            "H",
+            "W",
+            "K"
+        ],
+        [
+            "E",
+            "Z",
+            "W",
+            "B",
+            "E",
+            "X",
+            "K",
+            "N",
+            "T",
+            "A",
+            "G",
+            "I"
+        ],
+        [
+            "E",
+            "A",
+            "G",
+            "E",
+            "V",
+            "O",
+            "E",
+            "U",
+            "Z",
+            "Q",
+            "K",
+            "R"
+        ]
+    ],
+    "words": [
+        "COMPUTER",
+        "KEYBOARD",
+        "MONITOR",
+        "LAPTOP",
+        "TABLET",
+        "MOUSE"
+    ],
+    "placed": [
+        {
+            "word": "COMPUTER",
+            "placed": "COMPUTER",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 7,
+            "startCol": 0
+        },
+        {
+            "word": "KEYBOARD",
+            "placed": "KEYBOARD",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 0
+        },
+        {
+            "word": "MONITOR",
+            "placed": "MONITOR",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 8
+        },
+        {
+            "word": "LAPTOP",
+            "placed": "LAPTOP",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false,
+            "startRow": 5,
+            "startCol": 0
+        },
+        {
+            "word": "TABLET",
+            "placed": "TABLET",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 9
+        },
+        {
+            "word": "MOUSE",
+            "placed": "MOUSE",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 10
+        }
+    ],
+    "size": 12,
+    "seed": 753141478
+}

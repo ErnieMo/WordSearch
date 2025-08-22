@@ -1,0 +1,116 @@
+{
+    "id": "682evpk5x",
+    "created_at": "2025-08-22 17:10:10",
+    "grid": [
+        [
+            "T",
+            "E",
+            "S",
+            "T",
+            "W",
+            "O",
+            "R",
+            "D"
+        ],
+        [
+            "C",
+            "E",
+            "R",
+            "F",
+            "I",
+            "D",
+            "O",
+            "U"
+        ],
+        [
+            "I",
+            "T",
+            "E",
+            "N",
+            "L",
+            "J",
+            "E",
+            "I"
+        ],
+        [
+            "A",
+            "I",
+            "R",
+            "Q",
+            "P",
+            "J",
+            "S",
+            "O"
+        ],
+        [
+            "S",
+            "Z",
+            "Z",
+            "O",
+            "H",
+            "F",
+            "A",
+            "R"
+        ],
+        [
+            "C",
+            "L",
+            "I",
+            "A",
+            "O",
+            "C",
+            "H",
+            "A"
+        ],
+        [
+            "S",
+            "H",
+            "I",
+            "S",
+            "P",
+            "P",
+            "Z",
+            "Y"
+        ],
+        [
+            "K",
+            "O",
+            "Q",
+            "D",
+            "T",
+            "D",
+            "A",
+            "I"
+        ]
+    ],
+    "words": [
+        "TEST",
+        "WORD"
+    ],
+    "placed": [
+        {
+            "word": "TEST",
+            "placed": "TEST",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 0
+        },
+        {
+            "word": "WORD",
+            "placed": "WORD",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 4
+        }
+    ],
+    "size": 8,
+    "seed": 1165675354
+}

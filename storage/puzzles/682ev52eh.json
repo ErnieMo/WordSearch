@@ -1,0 +1,280 @@
+{
+    "id": "682ev52eh",
+    "created_at": "2025-08-22 17:08:35",
+    "grid": [
+        [
+            "E",
+            "N",
+            "O",
+            "H",
+            "P",
+            "T",
+            "R",
+            "A",
+            "M",
+            "S",
+            "C",
+            "I"
+        ],
+        [
+            "D",
+            "R",
+            "A",
+            "O",
+            "B",
+            "Y",
+            "E",
+            "K",
+            "E",
+            "M",
+            "O",
+            "N"
+        ],
+        [
+            "U",
+            "T",
+            "E",
+            "R",
+            "A",
+            "W",
+            "D",
+            "R",
+            "A",
+            "H",
+            "M",
+            "T"
+        ],
+        [
+            "L",
+            "A",
+            "P",
+            "T",
+            "O",
+            "P",
+            "A",
+            "P",
+            "E",
+            "B",
+            "P",
+            "E"
+        ],
+        [
+            "P",
+            "B",
+            "W",
+            "W",
+            "F",
+            "W",
+            "C",
+            "U",
+            "I",
+            "P",
+            "U",
+            "R"
+        ],
+        [
+            "P",
+            "L",
+            "R",
+            "O",
+            "T",
+            "I",
+            "N",
+            "O",
+            "M",
+            "F",
+            "T",
+            "N"
+        ],
+        [
+            "P",
+            "E",
+            "N",
+            "F",
+            "E",
+            "S",
+            "U",
+            "O",
+            "M",
+            "M",
+            "E",
+            "E"
+        ],
+        [
+            "T",
+            "T",
+            "O",
+            "N",
+            "F",
+            "N",
+            "Z",
+            "R",
+            "G",
+            "U",
+            "R",
+            "T"
+        ],
+        [
+            "P",
+            "S",
+            "B",
+            "B",
+            "U",
+            "H",
+            "B",
+            "D",
+            "Y",
+            "V",
+            "X",
+            "P"
+        ],
+        [
+            "V",
+            "Z",
+            "H",
+            "A",
+            "D",
+            "X",
+            "S",
+            "Z",
+            "I",
+            "B",
+            "O",
+            "G"
+        ],
+        [
+            "B",
+            "U",
+            "N",
+            "G",
+            "T",
+            "V",
+            "E",
+            "S",
+            "R",
+            "F",
+            "M",
+            "V"
+        ],
+        [
+            "G",
+            "T",
+            "N",
+            "A",
+            "V",
+            "K",
+            "N",
+            "G",
+            "T",
+            "L",
+            "C",
+            "K"
+        ]
+    ],
+    "words": [
+        "SMARTPHONE",
+        "COMPUTER",
+        "KEYBOARD",
+        "INTERNET",
+        "SOFTWARE",
+        "HARDWARE",
+        "MONITOR",
+        "LAPTOP",
+        "TABLET",
+        "MOUSE"
+    ],
+    "placed": [
+        {
+            "word": "SMARTPHONE",
+            "placed": "ENOHPTRAMS",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "COMPUTER",
+            "placed": "COMPUTER",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        },
+        {
+            "word": "KEYBOARD",
+            "placed": "DRAOBYEK",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "INTERNET",
+            "placed": "INTERNET",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        },
+        {
+            "word": "SOFTWARE",
+            "placed": "SOFTWARE",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "HARDWARE",
+            "placed": "ERAWDRAH",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "MONITOR",
+            "placed": "ROTINOM",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "LAPTOP",
+            "placed": "LAPTOP",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "TABLET",
+            "placed": "TABLET",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        },
+        {
+            "word": "MOUSE",
+            "placed": "ESUOM",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": true
+        }
+    ],
+    "size": 12,
+    "seed": 1461011424
+}

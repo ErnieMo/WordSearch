@@ -8,54 +8,10 @@ ob_start();
         <div class="col-lg-8">
             <div class="text-center mb-5">
                 <h2 class="display-4 text-primary mb-3">Welcome to Word Search!</h2>
-                <p class="lead">Challenge your mind with our interactive word search puzzles. Choose your difficulty and start playing!</p>
+                <p class="lead">Challenge your mind with our interactive word search puzzles. Choose your theme and difficulty to begin!</p>
             </div>
 
-            <!-- Difficulty Selection -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="h5 mb-0">
-                        <i class="bi bi-gear"></i> Select Difficulty
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100 border-primary">
-                                <div class="card-body text-center">
-                                    <h4 class="card-title text-primary">Easy</h4>
-                                    <p class="card-text">10×10 grid<br>Horizontal & Vertical only</p>
-                                    <button class="btn btn-primary btn-difficulty" data-difficulty="easy" data-size="10">
-                                        <i class="bi bi-play-circle"></i> Play Easy
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100 border-warning">
-                                <div class="card-body text-center">
-                                    <h4 class="card-title text-warning">Medium</h4>
-                                    <p class="card-text">12×12 grid<br>Includes diagonals</p>
-                                    <button class="btn btn-warning btn-difficulty" data-difficulty="medium" data-size="12">
-                                        <i class="bi bi-play-circle"></i> Play Medium
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100 border-danger">
-                                <div class="card-body text-center">
-                                    <h4 class="card-title text-danger">Hard</h4>
-                                    <p class="card-text">15×15 grid<br>All directions + reverse</p>
-                                    <button class="btn btn-danger btn-difficulty" data-difficulty="hard" data-size="15">
-                                        <i class="bi bi-play-circle"></i> Play Hard
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- Theme Selection -->
             <div class="card shadow-sm mb-4">
@@ -65,10 +21,17 @@ ob_start();
                     </h3>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
+                    <!-- Choose Theme Section -->
+                    <h4 class="mb-3 text-center">
+                        <i class="bi bi-palette"></i> Choose Theme
+                    </h4>
+                    <div class="row mb-4">
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 theme-card" data-theme="animals">
+                                <div class="card-body text-center position-relative">
+                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                                    </div>
                                     <i class="bi bi-tree text-success" style="font-size: 2rem;"></i>
                                     <h5 class="card-title mt-2">Animals</h5>
                                     <p class="card-text">Wildlife and pets</p>
@@ -78,9 +41,12 @@ ob_start();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 theme-card" data-theme="geography">
+                                <div class="card-body text-center position-relative">
+                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-info fs-4"></i>
+                                    </div>
                                     <i class="bi bi-globe text-info" style="font-size: 2rem;"></i>
                                     <h5 class="card-title mt-2">Geography</h5>
                                     <p class="card-text">Countries and cities</p>
@@ -90,9 +56,12 @@ ob_start();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 theme-card" data-theme="technology">
+                                <div class="card-body text-center position-relative">
+                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-warning fs-4"></i>
+                                    </div>
                                     <i class="bi bi-cpu text-warning" style="font-size: 2rem;"></i>
                                     <h5 class="card-title mt-2">Technology</h5>
                                     <p class="card-text">Computers and gadgets</p>
@@ -102,6 +71,111 @@ ob_start();
                                 </div>
                             </div>
                         </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 theme-card" data-theme="food">
+                                <div class="card-body text-center position-relative">
+                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-danger fs-4"></i>
+                                    </div>
+                                    <i class="bi bi-cup-hot text-danger" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title mt-2">Food</h5>
+                                    <p class="card-text">Delicious dishes and ingredients</p>
+                                    <button class="btn btn-outline-danger btn-theme" data-theme="food">
+                                        Select Food
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 theme-card" data-theme="automotive">
+                                <div class="card-body text-center position-relative">
+                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-dark fs-4"></i>
+                                    </div>
+                                    <i class="bi bi-car-front text-dark" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title mt-2">Automotive</h5>
+                                    <p class="card-text">Cars, trucks, and vehicles</p>
+                                    <button class="btn btn-outline-dark btn-theme" data-theme="automotive">
+                                        Select Automotive
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 theme-card" data-theme="medical">
+                                <div class="card-body text-center position-relative">
+                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-danger fs-4"></i>
+                                    </div>
+                                    <i class="bi bi-heart-pulse text-danger" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title mt-2">Medical</h5>
+                                    <p class="card-text">Healthcare and medicine</p>
+                                    <button class="btn btn-outline-danger btn-theme" data-theme="medical">
+                                        Select Medical
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Select Difficulty Section -->
+                    <h4 class="mb-3 text-center">
+                        <i class="bi bi-speedometer2"></i> Select Difficulty
+                    </h4>
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 difficulty-card" data-difficulty="easy">
+                                <div class="card-body text-center position-relative">
+                                    <div class="difficulty-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                                    </div>
+                                    <i class="bi bi-emoji-smile text-success" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title mt-2">Easy</h5>
+                                    <p class="card-text">10x10 grid, 8-10 words</p>
+                                    <button class="btn btn-outline-success btn-difficulty" data-difficulty="easy">
+                                        Select Easy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 difficulty-card" data-difficulty="medium">
+                                <div class="card-body text-center position-relative">
+                                    <div class="difficulty-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-warning fs-4"></i>
+                                    </div>
+                                    <i class="bi bi-emoji-neutral text-warning" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title mt-2">Medium</h5>
+                                    <p class="card-text">15x15 grid, 12-15 words</p>
+                                    <button class="btn btn-outline-warning btn-difficulty" data-difficulty="medium">
+                                        Select Medium
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 difficulty-card" data-difficulty="hard">
+                                <div class="card-body text-center position-relative">
+                                    <div class="difficulty-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                        <i class="bi bi-check-circle-fill text-danger fs-4"></i>
+                                    </div>
+                                    <i class="bi bi-emoji-frown text-danger" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title mt-2">Hard</h5>
+                                    <p class="card-text">20x20 grid, 18-20 words</p>
+                                    <button class="btn btn-outline-danger btn-difficulty" data-difficulty="hard">
+                                        Select Hard
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Start Game Button -->
+                    <div class="text-center mt-4">
+                        <button id="startGameBtn" class="btn btn-primary btn-lg" disabled>
+                            <i class="bi bi-play-circle"></i> Start Game
+                        </button>
+                        <p class="text-muted mt-2">Select a theme and difficulty to begin</p>
                     </div>
                 </div>
             </div>

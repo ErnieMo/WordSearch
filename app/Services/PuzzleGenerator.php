@@ -39,9 +39,32 @@ class PuzzleGenerator
             mt_srand($options['seed']);
         }
 
-        // Place words
-        foreach ($words as $word) {
-            $this->placeWord($word, $options);
+        // Place words with retry logic
+        $maxRetries = 3;
+        $retryCount = 0;
+        
+        while ($retryCount < $maxRetries) {
+            $allWordsPlaced = true;
+            $this->placedWords = [];
+            $this->grid = array_fill(0, $this->size, array_fill(0, $this->size, ''));
+            
+            foreach ($words as $word) {
+                if (!$this->placeWord($word, $options)) {
+                    $allWordsPlaced = false;
+                    break;
+                }
+            }
+            
+            if ($allWordsPlaced) {
+                break;
+            }
+            
+            $retryCount++;
+            // Increase grid size slightly if words can't fit
+            if ($retryCount === 1) {
+                $this->size = min($this->size + 2, 20);
+                $this->grid = array_fill(0, $this->size, array_fill(0, $this->size, ''));
+            }
         }
 
         // Fill empty cells with random letters
@@ -58,7 +81,7 @@ class PuzzleGenerator
 
     private function placeWord(string $word, array $options): bool
     {
-        $maxAttempts = 100;
+        $maxAttempts = 200; // Increased attempts
         $attempts = 0;
 
         while ($attempts < $maxAttempts) {
@@ -67,12 +90,15 @@ class PuzzleGenerator
             
             $wordToPlace = $reverse ? strrev($word) : $word;
             
-            if ($this->tryPlaceWord($wordToPlace, $direction)) {
+            $placement = $this->tryPlaceWord($wordToPlace, $direction);
+            if ($placement) {
                 $this->placedWords[] = [
                     'word' => $word,
                     'placed' => $wordToPlace,
                     'direction' => $direction,
                     'reverse' => $reverse,
+                    'startRow' => $placement['startRow'],
+                    'startCol' => $placement['startCol'],
                 ];
                 return true;
             }
@@ -105,18 +131,42 @@ class PuzzleGenerator
         return (bool) mt_rand(0, 1);
     }
 
-    private function tryPlaceWord(string $word, array $direction): bool
+    private function tryPlaceWord(string $word, array $direction): array|false
     {
         $wordLen = strlen($word);
         
-        // Try multiple starting positions
-        for ($attempt = 0; $attempt < 50; $attempt++) {
+        // Create a scoring system to prefer positions that spread words out
+        $bestPosition = null;
+        $bestScore = -1;
+        
+        // Try multiple random positions and score them
+        for ($attempt = 0; $attempt < 100; $attempt++) {
             $startRow = mt_rand(0, $this->size - 1);
             $startCol = mt_rand(0, $this->size - 1);
             
             if ($this->canPlaceWordAt($word, $startRow, $startCol, $direction)) {
-                $this->placeWordAt($word, $startRow, $startCol, $direction);
-                return true;
+                $score = $this->calculatePlacementScore($word, $startRow, $startCol, $direction);
+                
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestPosition = ['startRow' => $startRow, 'startCol' => $startCol];
+                }
+            }
+        }
+        
+        // If we found a good position, use it
+        if ($bestPosition && $bestScore > 0) {
+            $this->placeWordAt($word, $bestPosition['startRow'], $bestPosition['startCol'], $direction);
+            return $bestPosition;
+        }
+        
+        // Fallback: try systematic placement
+        for ($row = 0; $row < $this->size; $row++) {
+            for ($col = 0; $col < $this->size; $col++) {
+                if ($this->canPlaceWordAt($word, $row, $col, $direction)) {
+                    $this->placeWordAt($word, $row, $col, $direction);
+                    return ['startRow' => $row, 'startCol' => $col];
+                }
             }
         }
         
@@ -176,5 +226,64 @@ class PuzzleGenerator
                 }
             }
         }
+    }
+    
+    private function calculatePlacementScore(string $word, int $startRow, int $startCol, array $direction): int
+    {
+        $score = 0;
+        $wordLen = strlen($word);
+        $dr = $direction[0];
+        $dc = $direction[1];
+        
+        // Prefer positions away from the center (spread to edges)
+        $center = (int)($this->size / 2);
+        $distanceFromCenter = abs($startRow - $center) + abs($startCol - $center);
+        $score += $distanceFromCenter * 2;
+        
+        // Prefer positions that don't overlap with existing words
+        $overlapPenalty = 0;
+        for ($i = 0; $i < $wordLen; $i++) {
+            $row = $startRow + ($dr * $i);
+            $col = $startCol + ($dc * $i);
+            
+            if ($this->grid[$row][$col] !== '') {
+                $overlapPenalty += 5; // Heavy penalty for overlapping
+            }
+        }
+        $score -= $overlapPenalty;
+        
+        // Prefer positions that spread words across different quadrants
+        $quadrant = $this->getQuadrant($startRow, $startCol);
+        $quadrantCount = $this->countWordsInQuadrant($quadrant);
+        $score += (4 - $quadrantCount) * 3; // Prefer less crowded quadrants
+        
+        // Prefer positions that use the full board dimensions
+        $score += min($startRow, $this->size - 1 - $startRow) + min($startCol, $this->size - 1 - $startCol);
+        
+        return $score;
+    }
+    
+    private function getQuadrant(int $row, int $col): int
+    {
+        $midRow = (int)($this->size / 2);
+        $midCol = (int)($this->size / 2);
+        
+        if ($row < $midRow) {
+            return $col < $midCol ? 0 : 1; // Top-left or Top-right
+        } else {
+            return $col < $midCol ? 2 : 3; // Bottom-left or Bottom-right
+        }
+    }
+    
+    private function countWordsInQuadrant(int $quadrant): int
+    {
+        $count = 0;
+        foreach ($this->placedWords as $placedWord) {
+            $wordQuadrant = $this->getQuadrant($placedWord['startRow'], $placedWord['startCol']);
+            if ($wordQuadrant === $quadrant) {
+                $count++;
+            }
+        }
+        return $count;
     }
 }
