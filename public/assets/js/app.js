@@ -181,7 +181,7 @@
             success: function (response) {
                 if (response.id) {
                     // Redirect to play page with the new puzzle
-                    window.location.href = `/play?id=${response.id}`;
+                    window.location.href = `https://wordsearch.dev.nofinway.com/play?id=${response.id}`;
                 } else {
                     alert('Error generating puzzle. Please try again.');
                 }
@@ -381,6 +381,22 @@
             url: 'https://wordsearch.dev.nofinway.com/api/puzzle/' + puzzleId,
             method: 'GET',
             success: function (response) {
+                console.log('Puzzle loaded from API:', response);
+                console.log('Response type:', typeof response);
+                console.log('Response keys:', Object.keys(response));
+
+                // Ensure response is an object, not a string
+                if (typeof response === 'string') {
+                    try {
+                        response = JSON.parse(response);
+                        console.log('Parsed response:', response);
+                    } catch (e) {
+                        console.error('Failed to parse response:', e);
+                        alert('Error loading puzzle data');
+                        return;
+                    }
+                }
+
                 gameState.puzzle = response;
                 gameState.foundWords = new Set(); // Reset found words for new puzzle
                 renderGame();
@@ -396,15 +412,25 @@
     function renderGame() {
         if (!gameState.puzzle) return;
 
+        console.log('Rendering game with puzzle:', gameState.puzzle);
+        console.log('Puzzle words:', gameState.puzzle.words);
+        console.log('Words type:', typeof gameState.puzzle.words);
+        console.log('Words is array:', Array.isArray(gameState.puzzle.words));
+
         // Render grid
         const gridHtml = renderGrid(gameState.puzzle.grid, true);
         $('#gameGrid').html(gridHtml);
 
         // Render word list
-        const wordsHtml = gameState.puzzle.words.map(word =>
-            `<div class="word-item" data-word="${word}">${word}</div>`
-        ).join('');
-        $('#wordList').html(wordsHtml);
+        if (gameState.puzzle.words && Array.isArray(gameState.puzzle.words)) {
+            const wordsHtml = gameState.puzzle.words.map(word =>
+                `<div class="word-item" data-word="${word}">${word}</div>`
+            ).join('');
+            $('#wordList').html(wordsHtml);
+        } else {
+            console.error('Invalid words data:', gameState.puzzle.words);
+            $('#wordList').html('<div class="alert alert-danger">Error: Invalid word data</div>');
+        }
 
         // Update game info
         $('#gameDifficulty').text(getDifficultyText(gameState.puzzle.size));

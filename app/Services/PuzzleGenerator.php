@@ -51,11 +51,13 @@ class PuzzleGenerator
             foreach ($words as $word) {
                 if (!$this->placeWord($word, $options)) {
                     $allWordsPlaced = false;
+                    error_log("Failed to place word: $word (attempt $retryCount)");
                     break;
                 }
             }
             
             if ($allWordsPlaced) {
+                error_log("Successfully placed all words on attempt " . ($retryCount + 1));
                 break;
             }
             
@@ -64,6 +66,7 @@ class PuzzleGenerator
             if ($retryCount === 1) {
                 $this->size = min($this->size + 2, 20);
                 $this->grid = array_fill(0, $this->size, array_fill(0, $this->size, ''));
+                error_log("Increased grid size to: $this->size");
             }
         }
 
@@ -154,18 +157,29 @@ class PuzzleGenerator
             }
         }
         
-        // If we found a good position, use it
-        if ($bestPosition && $bestScore > 0) {
+        // If we found a valid position, use it (don't require positive score)
+        if ($bestPosition) {
             $this->placeWordAt($word, $bestPosition['startRow'], $bestPosition['startCol'], $direction);
             return $bestPosition;
         }
         
-        // Fallback: try systematic placement
-        for ($row = 0; $row < $this->size; $row++) {
-            for ($col = 0; $col < $this->size; $col++) {
-                if ($this->canPlaceWordAt($word, $row, $col, $direction)) {
-                    $this->placeWordAt($word, $row, $col, $direction);
-                    return ['startRow' => $row, 'startCol' => $col];
+        // Fallback: try systematic placement with all directions
+        $allDirections = [
+            [0, 1],   // horizontal
+            [1, 0],   // vertical
+            [1, 1],   // diagonal down
+            [1, -1],  // diagonal up
+            [-1, 1],  // diagonal up-right
+            [-1, -1], // diagonal up-left
+        ];
+        
+        foreach ($allDirections as $dir) {
+            for ($row = 0; $row < $this->size; $row++) {
+                for ($col = 0; $col < $this->size; $col++) {
+                    if ($this->canPlaceWordAt($word, $row, $col, $dir)) {
+                        $this->placeWordAt($word, $row, $col, $dir);
+                        return ['startRow' => $row, 'startCol' => $col];
+                    }
                 }
             }
         }
