@@ -1,23 +1,22 @@
+<?php
+$appUrl = $_ENV['APP_URL'] ?? 'http://localhost:8000';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Word Search' ?></title>
-    
-    <!-- Bootstrap CSS -->
+    <title>Word Search Game</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link href="https://wordsearch.dev.nofinway.com/assets/css/app.css" rel="stylesheet">
+    <link href="<?php echo $appUrl; ?>/assets/css/app.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Top Navigation Menu -->
+    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="https://wordsearch.dev.nofinway.com/">
-                <i class="bi bi-search-heart me-2"></i>WordSearch
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="<?php echo $appUrl; ?>/">
+                <i class="bi bi-search me-2"></i>WordSearch
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -27,22 +26,22 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="https://wordsearch.dev.nofinway.com/">
+                        <a class="nav-link" href="<?php echo $appUrl; ?>/">
                             <i class="bi bi-house me-1"></i>Home
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="https://wordsearch.dev.nofinway.com/create">
+                        <a class="nav-link" href="<?php echo $appUrl; ?>/create">
                             <i class="bi bi-plus-circle me-1"></i>Create
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="https://wordsearch.dev.nofinway.com/scores">
+                        <a class="nav-link" href="<?php echo $appUrl; ?>/scores">
                             <i class="bi bi-trophy me-1"></i>Scores
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="https://wordsearch.dev.nofinway.com/profile">
+                        <a class="nav-link" href="<?php echo $appUrl; ?>/profile">
                             <i class="bi bi-person me-1"></i>Profile
                         </a>
                     </li>
@@ -80,7 +79,7 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- Custom JS -->
-    <script src="https://wordsearch.dev.nofinway.com/assets/js/app.js"></script>
+    <script src="<?php echo $appUrl; ?>/assets/js/app.js"></script>
     
     <script>
         // Auth state management
@@ -89,26 +88,60 @@
             const authSection = document.getElementById('authSection');
             
             if (token) {
-                // User is logged in
-                authSection.innerHTML = `
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle me-1"></i>Account
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="https://wordsearch.dev.nofinway.com/profile">
-                                <i class="bi bi-person me-2"></i>My Profile
-                            </a></li>
-                            <li><a class="dropdown-item" href="https://wordsearch.dev.nofinway.com/scores">
-                                <i class="bi bi-trophy me-2"></i>My Scores
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="logout()">
-                                <i class="bi bi-box-arrow-right me-2"></i>Logout
-                            </a></li>
-                        </ul>
-                    </li>
-                `;
+                // User is logged in - fetch profile to get full name
+                fetch('/api/auth/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const fullName = `${data.data.first_name} ${data.data.last_name}`;
+                        authSection.innerHTML = `
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-person-circle me-1"></i>${fullName}
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/profile">
+                                        <i class="bi bi-person me-2"></i>My Profile
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/scores">
+                                        <i class="bi bi-trophy me-2"></i>My Scores
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" onclick="logout()">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                    </a></li>
+                                </ul>
+                            </li>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching profile:', error);
+                    // Fallback to generic display
+                    authSection.innerHTML = `
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle me-1"></i>Account
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/profile">
+                                    <i class="bi bi-person me-2"></i>My Profile
+                                </a></li>
+                                <li><a class="dropdown-item" href="<?php echo $appUrl; ?>/scores">
+                                    <i class="bi bi-trophy me-2"></i>My Scores
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="logout()">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                </a></li>
+                            </ul>
+                        </li>
+                    `;
+                });
             } else {
                 // User is not logged in
                 authSection.innerHTML = `

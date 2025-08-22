@@ -79,14 +79,29 @@ class DatabaseService
 
     public function insert(string $table, array $data): int
     {
-        $columns = implode(', ', array_keys($data));
-        $placeholders = ':' . implode(', :', array_keys($data));
+        // Clean the data to ensure proper types
+        $cleanData = [];
+        foreach ($data as $key => $value) {
+            if (is_bool($value)) {
+                $cleanData[$key] = $value ? 't' : 'f'; // PostgreSQL boolean format
+            } elseif ($value === null) {
+                $cleanData[$key] = null;
+            } elseif (is_string($value) && $value === '') {
+                // Skip empty strings for non-string fields
+                continue;
+            } else {
+                $cleanData[$key] = $value;
+            }
+        }
+        
+        $columns = implode(', ', array_keys($cleanData));
+        $placeholders = ':' . implode(', :', array_keys($cleanData));
         
         $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders}) RETURNING id";
         
         try {
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($data);
+            $stmt->execute($cleanData);
             $result = $stmt->fetch();
             return $result['id'] ?? 0;
         } catch (PDOException $e) {
@@ -96,13 +111,28 @@ class DatabaseService
 
     public function update(string $table, array $data, string $where, array $whereParams = []): int
     {
-        $setClause = implode(', ', array_map(fn($key) => "{$key} = :{$key}", array_keys($data)));
+        // Clean the data to ensure proper types
+        $cleanData = [];
+        foreach ($data as $key => $value) {
+            if (is_bool($value)) {
+                $cleanData[$key] = $value ? 't' : 'f'; // PostgreSQL boolean format
+            } elseif ($value === null) {
+                $cleanData[$key] = null;
+            } elseif (is_string($value) && $value === '') {
+                // Skip empty strings for non-string fields
+                continue;
+            } else {
+                $cleanData[$key] = $value;
+            }
+        }
+        
+        $setClause = implode(', ', array_map(fn($key) => "{$key} = :{$key}", array_keys($cleanData)));
         
         $sql = "UPDATE {$table} SET {$setClause} WHERE {$where}";
         
         try {
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute(array_merge($data, $whereParams));
+            $stmt->execute(array_merge($cleanData, $whereParams));
             return $stmt->rowCount();
         } catch (PDOException $e) {
             throw new Exception("Update failed: " . $e->getMessage());

@@ -179,15 +179,21 @@
             contentType: 'application/json',
             data: JSON.stringify(requestData),
             success: function (response) {
-                if (response.id) {
+                console.log('Puzzle generation response:', response);
+
+                if (response.success && response.id) {
                     // Redirect to play page with the new puzzle
-                    window.location.href = `https://wordsearch.dev.nofinway.com/play?id=${response.id}`;
+                    window.location.href = '/play?id=' + response.id;
                 } else {
-                    alert('Error generating puzzle. Please try again.');
+                    const errorMsg = response.error || 'Unknown error occurred';
+                    console.error('Puzzle generation failed:', errorMsg);
+                    alert('Error generating puzzle: ' + errorMsg);
                 }
             },
-            error: function () {
-                alert('Error generating puzzle. Please try again.');
+            error: function (xhr) {
+                console.error('Puzzle generation request failed:', xhr);
+                const errorMsg = xhr.responseJSON?.error || 'Request failed';
+                alert('Error generating puzzle: ' + errorMsg);
             }
         });
     }
@@ -225,7 +231,7 @@
 
         // Generate puzzle
         $.ajax({
-            url: 'https://wordsearch.dev.nofinway.com/api/generate',
+            url: '/api/generate',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -239,13 +245,23 @@
             success: function (response) {
                 $('#loadingModal').modal('hide');
 
-                // Store puzzle and redirect to play page
-                localStorage.setItem('currentPuzzle', JSON.stringify(response));
-                window.location.href = 'https://wordsearch.dev.nofinway.com/play?id=' + response.id;
+                console.log('Puzzle generation response:', response);
+
+                if (response.success && response.id) {
+                    // Store puzzle and redirect to play page
+                    localStorage.setItem('currentPuzzle', JSON.stringify(response));
+                    window.location.href = '/play?id=' + response.id;
+                } else {
+                    const errorMsg = response.error || 'Unknown error occurred';
+                    console.error('Puzzle generation failed:', errorMsg);
+                    alert('Error generating puzzle: ' + errorMsg);
+                }
             },
             error: function (xhr) {
                 $('#loadingModal').modal('hide');
-                alert('Error generating puzzle: ' + (xhr.responseJSON?.error || 'Unknown error'));
+                console.error('Puzzle generation request failed:', xhr);
+                const errorMsg = xhr.responseJSON?.error || 'Request failed';
+                alert('Error generating puzzle: ' + errorMsg);
             }
         });
     }
@@ -280,7 +296,7 @@
 
         // Generate puzzle
         $.ajax({
-            url: 'https://wordsearch.dev.nofinway.com/api/generate',
+            url: '/api/generate',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -352,7 +368,7 @@
         const puzzle = JSON.parse(localStorage.getItem('previewPuzzle'));
         if (puzzle) {
             localStorage.setItem('currentPuzzle', JSON.stringify(puzzle));
-            window.location.href = 'https://wordsearch.dev.nofinway.com/play?id=' + puzzle.id;
+            window.location.href = '/play?id=' + puzzle.id;
         }
     }
 
@@ -378,7 +394,7 @@
     // Play page functions
     function loadPuzzle(puzzleId) {
         $.ajax({
-            url: 'https://wordsearch.dev.nofinway.com/api/puzzle/' + puzzleId,
+            url: '/api/puzzle/' + puzzleId,
             method: 'GET',
             success: function (response) {
                 console.log('Puzzle loaded from API:', response);
@@ -404,7 +420,7 @@
             },
             error: function (xhr) {
                 alert('Error loading puzzle: ' + (xhr.responseJSON?.error || 'Unknown error'));
-                window.location.href = 'https://wordsearch.dev.nofinway.com/';
+                window.location.href = '/';
             }
         });
     }
@@ -668,7 +684,7 @@
     }
 
     function startNewGame() {
-        window.location.href = 'https://wordsearch.dev.nofinway.com/';
+        window.location.href = '/';
     }
 
     function printPuzzle() {
@@ -726,3 +742,185 @@
     };
 
 })(jQuery);
+
+// Authentication functionality
+document.addEventListener('DOMContentLoaded', function () {
+    // Check if we're on the home page
+    if (window.location.pathname === '/') {
+        setupAuthForms();
+        // Note: setDefaultSelections is already called in initializeGame() for the home page
+    }
+});
+
+function setupAuthForms() {
+    // Login form handler
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            handleLogin();
+        });
+    }
+
+    // Register form handler
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            handleRegister();
+        });
+    }
+}
+
+function handleLogin() {
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+
+    if (!username || !password) {
+        showAlert('Please enter both username and password', 'danger');
+        return;
+    }
+
+    fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+                modal.hide();
+
+                // Show success message
+                showAlert('Login successful! Welcome back!', 'success');
+
+                // Update UI
+                updateAuthSection();
+
+                // Clear form
+                document.getElementById('loginForm').reset();
+            } else {
+                showAlert(data.message || 'Login failed', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Login error:', error);
+            showAlert('Login failed. Please try again.', 'danger');
+        });
+}
+
+function handleRegister() {
+    const firstName = document.getElementById('registerFirstName').value;
+    const lastName = document.getElementById('registerLastName').value;
+    const username = document.getElementById('registerUsername').value;
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+
+    if (!firstName || !lastName || !username || !email || !password) {
+        showAlert('Please fill in all fields', 'danger');
+        return;
+    }
+
+    if (password.length < 6) {
+        showAlert('Password must be at least 6 characters long', 'danger');
+        return;
+    }
+
+    fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            first_name: firstName,
+            last_name: lastName,
+            username,
+            email,
+            password
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+                modal.hide();
+
+                // Show personalized success message
+                const firstName = data.data.first_name || username;
+                showAlert(`Welcome, ${firstName}! Registration successful! Logging you in automatically...`, 'success');
+
+                // Clear form
+                document.getElementById('registerForm').reset();
+
+                // Auto-login the user
+                autoLoginAfterRegistration(username, password);
+            } else {
+                showAlert(data.message || 'Registration failed', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Registration error:', error);
+            showAlert('Registration failed. Please try again.', 'danger');
+        });
+}
+
+function autoLoginAfterRegistration(username, password) {
+    // Wait a moment for the success message to show
+    setTimeout(() => {
+        fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show personalized welcome message
+                    const firstName = data.data.first_name || username;
+                    showAlert(`Welcome, ${firstName}! You are now logged in.`, 'success');
+
+                    // Update UI to show logged-in state
+                    updateAuthSection();
+
+                    // Redirect to home page or refresh
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showAlert('Auto-login failed. Please login manually.', 'warning');
+                }
+            })
+            .catch(error => {
+                console.error('Auto-login error:', error);
+                showAlert('Auto-login failed. Please login manually.', 'warning');
+            });
+    }, 1000);
+}
+
+function showAlert(message, type) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // Add to page
+    document.body.appendChild(alertDiv);
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}

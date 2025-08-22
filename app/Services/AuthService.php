@@ -19,7 +19,7 @@ class AuthService
         $this->config = $config;
     }
 
-    public function register(string $username, string $email, string $password): array
+    public function register(string $firstName, string $lastName, string $username, string $email, string $password): array
     {
         // Check if user already exists
         $existingUser = $this->db->findOne('users', 'username = :username OR email = :email', [
@@ -35,24 +35,39 @@ class AuthService
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
         // Create user
-        $userId = $this->db->insert('users', [
+        $userData = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'username' => $username,
             'email' => $email,
             'password' => $hashedPassword,
             'is_active' => true,
             'email_verified' => false
-        ]);
+        ];
+        
+        // Log the data being inserted for debugging
+        error_log("Inserting user data: " . json_encode($userData));
+        
+        $userId = $this->db->insert('users', $userData);
 
         if (!$userId) {
             throw new Exception('Failed to create user');
         }
 
         // Generate JWT token
-        $token = $this->generateJWT($userId, $username, $email);
+        try {
+            $token = $this->generateJWT($userId, $username, $email);
+            error_log("JWT token generated successfully for user: " . $username);
+        } catch (Exception $e) {
+            error_log("JWT generation failed for user: " . $username . " - Error: " . $e->getMessage());
+            throw $e;
+        }
 
         return [
             'success' => true,
             'user_id' => $userId,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'username' => $username,
             'email' => $email,
             'token' => $token
@@ -61,23 +76,34 @@ class AuthService
 
     public function login(string $username, string $password): array
     {
+        // Log login attempt
+        error_log("Login attempt for username: " . $username);
+        
         // Find user by username or email
         $user = $this->db->findOne('users', 'username = :username OR email = :username', [
             'username' => $username
         ]);
 
         if (!$user) {
+            error_log("User not found for username: " . $username);
             throw new Exception('Invalid credentials');
         }
 
         if (!$user['is_active']) {
+            error_log("User account deactivated for username: " . $username);
             throw new Exception('Account is deactivated');
         }
 
+        // Log user found (without sensitive data)
+        error_log("User found: ID=" . $user['id'] . ", Username=" . $user['username'] . ", Email=" . $user['email']);
+
         // Verify password
         if (!password_verify($password, $user['password'])) {
+            error_log("Password verification failed for username: " . $username);
             throw new Exception('Invalid credentials');
         }
+
+        error_log("Password verified successfully for username: " . $username);
 
         // Generate JWT token
         $token = $this->generateJWT($user['id'], $user['username'], $user['email']);
@@ -128,15 +154,27 @@ class AuthService
 
     private function generateJWT(int $userId, string $username, string $email): string
     {
-        $payload = [
-            'user_id' => $userId,
-            'username' => $username,
-            'email' => $email,
-            'iat' => time(),
-            'exp' => time() + ($this->config['JWT_EXPIRY'] ?? 3600)
-        ];
+        try {
+            $payload = [
+                'user_id' => $userId,
+                'username' => $username,
+                'email' => $email,
+                'iat' => time(),
+                'exp' => time() + ($this->config['JWT_EXPIRY'] ?? 3600)
+            ];
 
-        return JWT::encode($payload, $this->config['JWT_SECRET'], 'HS256');
+            error_log("Generating JWT with payload: " . json_encode($payload));
+            error_log("JWT Secret length: " . strlen($this->config['JWT_SECRET']));
+
+            $token = JWT::encode($payload, $this->config['JWT_SECRET'], 'HS256');
+            error_log("JWT token generated successfully, length: " . strlen($token));
+            
+            return $token;
+        } catch (Exception $e) {
+            error_log("JWT generation error: " . $e->getMessage());
+            error_log("JWT generation error trace: " . $e->getTraceAsString());
+            throw $e;
+        }
     }
 
     public function changePassword(int $userId, string $currentPassword, string $newPassword): bool
@@ -185,12 +223,25 @@ class AuthService
 
     public function getUserById(int $userId): ?array
     {
-        return $this->db->findOne('users', 'id = :id', ['id' => $userId]);
+        $user = $this->db->findOne('users', 'id = :id', ['id' => $userId]);
+        if ($user) {
+            // Return only safe user data (exclude password)
+            return [
+                'id' => $user['id'],
+                'username' => $user['username'],
+                'email' => $user['email'],
+                'first_name' => $user['first_name'],
+                'last_name' => $user['last_name'],
+                'created_at' => $user['created_at'],
+                'is_active' => $user['is_active']
+            ];
+        }
+        return null;
     }
 
     public function updateProfile(int $userId, array $data): bool
     {
-        $allowedFields = ['username', 'email'];
+        $allowedFields = ['first_name', 'last_name', 'username', 'email'];
         $updateData = array_intersect_key($data, array_flip($allowedFields));
         
         if (empty($updateData)) {

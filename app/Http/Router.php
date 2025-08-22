@@ -91,8 +91,12 @@ class Router
             $generator = new PuzzleGenerator($this->config);
             $puzzle = $generator->generate($words, $options);
 
+            // Generate unique ID for the puzzle
+            $puzzleId = uniqid('puzzle_', true);
+            $puzzle['id'] = $puzzleId;
+
             // Store puzzle in database
-            $puzzleId = $this->storePuzzleInDatabase($puzzle, $options);
+            $this->storePuzzleInDatabase($puzzle, $options);
 
             header('Content-Type: application/json');
             return json_encode([

@@ -239,6 +239,16 @@ $content = '
             </div>
             <div class="modal-body">
                 <form id="registerForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="registerFirstName" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="registerFirstName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="registerLastName" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="registerLastName" required>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label for="registerUsername" class="form-label">Username</label>
                         <input type="text" class="form-control" id="registerUsername" required>

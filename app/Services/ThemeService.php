@@ -12,7 +12,8 @@ class ThemeService
     public function __construct(array $config)
     {
         $this->config = $config;
-        $this->themesPath = $config['paths']['resources'] . '/themes';
+        // Use the project root directory to find themes
+        $this->themesPath = __DIR__ . '/../../resources/themes';
     }
 
     public function getAvailableThemes(): array

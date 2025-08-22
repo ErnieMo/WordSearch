@@ -13,7 +13,7 @@ try {
     // Set default environment if .env file doesn't exist
     $_ENV['APP_ENV'] = 'development';
     $_ENV['APP_DEBUG'] = 'true';
-    $_ENV['APP_URL'] = 'https://wordsearch.dev.nofinway.com';
+    $_ENV['APP_URL'] = 'http://localhost:8000';
 }
 
 // Load configuration
@@ -27,7 +27,16 @@ $config = [
     'JWT_EXPIRY' => $_ENV['JWT_EXPIRY'] ?? '3600',
     'SESSION_SECURE' => $_ENV['SESSION_SECURE'] ?? 'true',
     'SESSION_HTTP_ONLY' => $_ENV['SESSION_HTTP_ONLY'] ?? 'true',
-    'SESSION_SAME_SITE' => $_ENV['SESSION_SAME_SITE'] ?? 'Strict'
+    'SESSION_SAME_SITE' => $_ENV['SESSION_SAME_SITE'] ?? 'Strict',
+    'game' => [
+        'directions' => [
+            'horizontal' => [0, 1],
+            'vertical' => [1, 0],
+            'diagonal_down' => [1, 1],
+            'diagonal_up' => [-1, 1]
+        ],
+        'maxWordLen' => 15
+    ]
 ];
 
 // Initialize database service
@@ -86,6 +95,27 @@ $router->post('/api/auth/profile/update', function() use ($dbService, $config) {
 $router->post('/api/auth/password/change', function() use ($dbService, $config) {
     $authController = new \App\Controllers\AuthController($dbService, $config);
     echo $authController->changePassword();
+});
+
+// Scores API routes
+$router->get('/api/scores', function() use ($dbService, $config) {
+    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
+    echo $scoresController->getScores();
+});
+
+$router->get('/api/scores/my', function() use ($dbService, $config) {
+    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
+    echo $scoresController->getMyScores();
+});
+
+$router->get('/api/scores/stats', function() use ($dbService, $config) {
+    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
+    echo $scoresController->getStats();
+});
+
+$router->get('/api/scores/my/stats', function() use ($dbService, $config) {
+    $scoresController = new \App\Controllers\ScoresController($dbService, $config);
+    echo $scoresController->getMyStats();
 });
 
 // Existing API routes

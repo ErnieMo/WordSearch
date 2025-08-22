@@ -27,12 +27,14 @@ class AuthController
                 throw new \Exception('Invalid input data');
             }
 
+            $firstName = $input['first_name'] ?? '';
+            $lastName = $input['last_name'] ?? '';
             $username = $input['username'] ?? '';
             $email = $input['email'] ?? '';
             $password = $input['password'] ?? '';
 
-            if (empty($username) || empty($email) || empty($password)) {
-                throw new \Exception('Username, email, and password are required');
+            if (empty($firstName) || empty($lastName) || empty($username) || empty($email) || empty($password)) {
+                throw new \Exception('First name, last name, username, email, and password are required');
             }
 
             if (strlen($password) < 6) {
@@ -43,16 +45,29 @@ class AuthController
                 throw new \Exception('Invalid email format');
             }
 
-            $result = $this->authService->register($username, $email, $password);
+            error_log("Registration attempt for: " . $username . " (" . $email . ")");
+
+            $result = $this->authService->register($firstName, $lastName, $username, $email, $password);
+
+            error_log("Registration successful for: " . $username . ", User ID: " . $result['user_id']);
 
             header('Content-Type: application/json');
             return json_encode([
                 'success' => true,
                 'message' => 'User registered successfully',
-                'data' => $result
+                'data' => [
+                    'user_id' => $result['user_id'],
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'username' => $username,
+                    'email' => $email,
+                    'token' => $result['token']
+                ]
             ]);
 
         } catch (\Exception $e) {
+            error_log("Registration failed for: " . ($input['username'] ?? 'unknown') . " - Error: " . $e->getMessage());
+            
             header('Content-Type: application/json');
             http_response_code(400);
             return json_encode([
