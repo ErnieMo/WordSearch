@@ -1,0 +1,367 @@
+{
+    "id": "682ekbh4s",
+    "created_at": "2025-08-22 16:38:17",
+    "grid": [
+        [
+            "C",
+            "R",
+            "H",
+            "I",
+            "N",
+            "O",
+            "V",
+            "J",
+            "T",
+            "R",
+            "Z",
+            "D",
+            "W",
+            "X",
+            "G"
+        ],
+        [
+            "U",
+            "O",
+            "E",
+            "L",
+            "E",
+            "P",
+            "H",
+            "A",
+            "N",
+            "T",
+            "Y",
+            "R",
+            "W",
+            "C",
+            "C"
+        ],
+        [
+            "P",
+            "S",
+            "S",
+            "L",
+            "N",
+            "D",
+            "E",
+            "C",
+            "D",
+            "Z",
+            "L",
+            "B",
+            "A",
+            "W",
+            "X"
+        ],
+        [
+            "A",
+            "P",
+            "G",
+            "I",
+            "R",
+            "A",
+            "F",
+            "F",
+            "E",
+            "Q",
+            "N",
+            "W",
+            "G",
+            "E",
+            "J"
+        ],
+        [
+            "L",
+            "Q",
+            "A",
+            "I",
+            "Y",
+            "Z",
+            "J",
+            "K",
+            "O",
+            "U",
+            "A",
+            "R",
+            "K",
+            "P",
+            "C"
+        ],
+        [
+            "A",
+            "S",
+            "S",
+            "N",
+            "P",
+            "Z",
+            "A",
+            "O",
+            "O",
+            "S",
+            "A",
+            "U",
+            "Z",
+            "Z",
+            "E"
+        ],
+        [
+            "O",
+            "V",
+            "A",
+            "Z",
+            "D",
+            "N",
+            "H",
+            "S",
+            "Y",
+            "I",
+            "J",
+            "N",
+            "G",
+            "P",
+            "K"
+        ],
+        [
+            "K",
+            "I",
+            "G",
+            "O",
+            "G",
+            "A",
+            "T",
+            "C",
+            "X",
+            "E",
+            "C",
+            "Q",
+            "N",
+            "T",
+            "G"
+        ],
+        [
+            "J",
+            "R",
+            "N",
+            "A",
+            "Y",
+            "K",
+            "Q",
+            "X",
+            "Y",
+            "R",
+            "K",
+            "C",
+            "K",
+            "I",
+            "G"
+        ],
+        [
+            "D",
+            "P",
+            "R",
+            "O",
+            "C",
+            "Z",
+            "V",
+            "I",
+            "T",
+            "O",
+            "O",
+            "N",
+            "T",
+            "Q",
+            "L"
+        ],
+        [
+            "O",
+            "O",
+            "T",
+            "F",
+            "I",
+            "A",
+            "T",
+            "W",
+            "K",
+            "X",
+            "H",
+            "H",
+            "O",
+            "F",
+            "N"
+        ],
+        [
+            "O",
+            "K",
+            "G",
+            "I",
+            "C",
+            "L",
+            "P",
+            "U",
+            "U",
+            "T",
+            "Y",
+            "F",
+            "D",
+            "M",
+            "T"
+        ],
+        [
+            "J",
+            "C",
+            "N",
+            "B",
+            "G",
+            "M",
+            "Y",
+            "F",
+            "U",
+            "C",
+            "Q",
+            "L",
+            "M",
+            "C",
+            "V"
+        ],
+        [
+            "D",
+            "S",
+            "G",
+            "O",
+            "Y",
+            "E",
+            "O",
+            "S",
+            "Z",
+            "E",
+            "B",
+            "R",
+            "A",
+            "H",
+            "N"
+        ],
+        [
+            "X",
+            "S",
+            "Y",
+            "C",
+            "X",
+            "G",
+            "R",
+            "I",
+            "O",
+            "G",
+            "Q",
+            "Y",
+            "R",
+            "T",
+            "P"
+        ]
+    ],
+    "words": [
+        "ELEPHANT",
+        "KANGAROO",
+        "GIRAFFE",
+        "MONKEY",
+        "TIGER",
+        "ZEBRA",
+        "PANDA",
+        "KOALA",
+        "RHINO",
+        "LION"
+    ],
+    "placed": [
+        {
+            "word": "ELEPHANT",
+            "placed": "ELEPHANT",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "KANGAROO",
+            "placed": "OORAGNAK",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "GIRAFFE",
+            "placed": "GIRAFFE",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "MONKEY",
+            "placed": "YEKNOM",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "TIGER",
+            "placed": "TIGER",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "ZEBRA",
+            "placed": "ZEBRA",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "PANDA",
+            "placed": "PANDA",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "KOALA",
+            "placed": "ALAOK",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": true
+        },
+        {
+            "word": "RHINO",
+            "placed": "RHINO",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "LION",
+            "placed": "NOIL",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": true
+        }
+    ],
+    "size": 15,
+    "seed": 1386837140
+}

@@ -1,0 +1,280 @@
+{
+    "id": "682eoe3n7",
+    "created_at": "2025-08-22 16:49:41",
+    "grid": [
+        [
+            "W",
+            "E",
+            "E",
+            "L",
+            "P",
+            "D",
+            "R",
+            "D",
+            "N",
+            "R",
+            "W",
+            "Y"
+        ],
+        [
+            "O",
+            "U",
+            "I",
+            "W",
+            "K",
+            "E",
+            "L",
+            "C",
+            "J",
+            "J",
+            "O",
+            "A"
+        ],
+        [
+            "Y",
+            "R",
+            "V",
+            "Z",
+            "C",
+            "Y",
+            "A",
+            "S",
+            "Z",
+            "R",
+            "H",
+            "S"
+        ],
+        [
+            "V",
+            "O",
+            "L",
+            "A",
+            "S",
+            "K",
+            "C",
+            "A",
+            "N",
+            "A",
+            "D",
+            "A"
+        ],
+        [
+            "I",
+            "P",
+            "V",
+            "U",
+            "A",
+            "A",
+            "F",
+            "R",
+            "I",
+            "C",
+            "A",
+            "L"
+        ],
+        [
+            "F",
+            "E",
+            "I",
+            "S",
+            "E",
+            "C",
+            "D",
+            "A",
+            "C",
+            "I",
+            "I",
+            "C"
+        ],
+        [
+            "Q",
+            "K",
+            "A",
+            "T",
+            "I",
+            "F",
+            "I",
+            "H",
+            "I",
+            "Z",
+            "K",
+            "P"
+        ],
+        [
+            "A",
+            "E",
+            "S",
+            "R",
+            "I",
+            "J",
+            "I",
+            "R",
+            "A",
+            "D",
+            "E",
+            "G"
+        ],
+        [
+            "Z",
+            "P",
+            "I",
+            "A",
+            "K",
+            "N",
+            "A",
+            "R",
+            "E",
+            "M",
+            "N",
+            "J"
+        ],
+        [
+            "J",
+            "S",
+            "A",
+            "L",
+            "A",
+            "I",
+            "B",
+            "P",
+            "C",
+            "M",
+            "F",
+            "I"
+        ],
+        [
+            "W",
+            "E",
+            "V",
+            "I",
+            "T",
+            "X",
+            "Z",
+            "E",
+            "A",
+            "D",
+            "A",
+            "N"
+        ],
+        [
+            "N",
+            "E",
+            "C",
+            "A",
+            "W",
+            "Q",
+            "Q",
+            "W",
+            "J",
+            "N",
+            "Z",
+            "R"
+        ]
+    ],
+    "words": [
+        "AUSTRALIA",
+        "AMERICA",
+        "EUROPE",
+        "AFRICA",
+        "CANADA",
+        "BRAZIL",
+        "CHINA",
+        "INDIA",
+        "JAPAN",
+        "ASIA"
+    ],
+    "placed": [
+        {
+            "word": "AUSTRALIA",
+            "placed": "AUSTRALIA",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        },
+        {
+            "word": "AMERICA",
+            "placed": "ACIREMA",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "EUROPE",
+            "placed": "EUROPE",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        },
+        {
+            "word": "AFRICA",
+            "placed": "AFRICA",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "CANADA",
+            "placed": "CANADA",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "BRAZIL",
+            "placed": "BRAZIL",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "CHINA",
+            "placed": "ANIHC",
+            "direction": [
+                -1,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "INDIA",
+            "placed": "AIDNI",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": true
+        },
+        {
+            "word": "JAPAN",
+            "placed": "JAPAN",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "ASIA",
+            "placed": "ASIA",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        }
+    ],
+    "size": 12,
+    "seed": 1698855923
+}

@@ -1,0 +1,230 @@
+{
+    "id": "682ee13rn",
+    "created_at": "2025-08-22 16:20:41",
+    "grid": [
+        [
+            "I",
+            "P",
+            "Y",
+            "W",
+            "M",
+            "Y",
+            "X",
+            "S",
+            "C",
+            "P",
+            "L",
+            "V"
+        ],
+        [
+            "R",
+            "J",
+            "Z",
+            "A",
+            "Q",
+            "O",
+            "A",
+            "V",
+            "E",
+            "I",
+            "H",
+            "A"
+        ],
+        [
+            "F",
+            "W",
+            "F",
+            "C",
+            "I",
+            "I",
+            "U",
+            "L",
+            "R",
+            "Y",
+            "U",
+            "B"
+        ],
+        [
+            "K",
+            "Y",
+            "P",
+            "C",
+            "S",
+            "E",
+            "N",
+            "S",
+            "R",
+            "Y",
+            "J",
+            "D"
+        ],
+        [
+            "U",
+            "E",
+            "O",
+            "R",
+            "O",
+            "K",
+            "E",
+            "X",
+            "E",
+            "F",
+            "F",
+            "M"
+        ],
+        [
+            "N",
+            "S",
+            "Y",
+            "U",
+            "U",
+            "M",
+            "B",
+            "Y",
+            "T",
+            "E",
+            "Y",
+            "O"
+        ],
+        [
+            "L",
+            "D",
+            "J",
+            "B",
+            "E",
+            "N",
+            "P",
+            "A",
+            "D",
+            "O",
+            "B",
+            "N"
+        ],
+        [
+            "A",
+            "D",
+            "F",
+            "A",
+            "O",
+            "H",
+            "I",
+            "U",
+            "O",
+            "U",
+            "T",
+            "I"
+        ],
+        [
+            "P",
+            "B",
+            "Y",
+            "S",
+            "E",
+            "A",
+            "Q",
+            "S",
+            "T",
+            "G",
+            "H",
+            "T"
+        ],
+        [
+            "T",
+            "B",
+            "V",
+            "M",
+            "O",
+            "J",
+            "R",
+            "K",
+            "Z",
+            "E",
+            "Q",
+            "O"
+        ],
+        [
+            "O",
+            "Z",
+            "Q",
+            "K",
+            "V",
+            "J",
+            "O",
+            "D",
+            "H",
+            "Z",
+            "R",
+            "R"
+        ],
+        [
+            "P",
+            "W",
+            "R",
+            "T",
+            "W",
+            "I",
+            "N",
+            "C",
+            "G",
+            "J",
+            "R",
+            "T"
+        ]
+    ],
+    "words": [
+        "COMPUTER",
+        "KEYBOARD",
+        "MONITOR",
+        "LAPTOP",
+        "MOUSE"
+    ],
+    "placed": [
+        {
+            "word": "COMPUTER",
+            "placed": "COMPUTER",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "KEYBOARD",
+            "placed": "KEYBOARD",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false
+        },
+        {
+            "word": "MONITOR",
+            "placed": "MONITOR",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        },
+        {
+            "word": "LAPTOP",
+            "placed": "LAPTOP",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false
+        },
+        {
+            "word": "MOUSE",
+            "placed": "MOUSE",
+            "direction": [
+                1,
+                1
+            ],
+            "reverse": false
+        }
+    ],
+    "size": 12,
+    "seed": 12345
+}
