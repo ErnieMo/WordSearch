@@ -27,9 +27,9 @@ ob_start();
                     </h4>
                     <div class="row mb-4">
                         <div class="col-md-6 col-lg-4 mb-3">
-                            <div class="card h-100 theme-card" data-theme="animals">
+                            <div class="card h-100 theme-card border-primary" data-theme="animals">
                                 <div class="card-body text-center position-relative">
-                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                    <div class="theme-checkmark position-absolute top-0 end-0 m-2">
                                         <i class="bi bi-check-circle-fill text-success fs-4"></i>
                                     </div>
                                     <i class="bi bi-tree text-success" style="font-size: 2rem;"></i>
@@ -124,9 +124,9 @@ ob_start();
                     </h4>
                     <div class="row mb-4">
                         <div class="col-md-4 mb-3">
-                            <div class="card h-100 difficulty-card" data-difficulty="easy">
+                            <div class="card h-100 difficulty-card border-primary" data-difficulty="easy">
                                 <div class="card-body text-center position-relative">
-                                    <div class="difficulty-checkmark position-absolute top-0 end-0 m-2" style="display: none;">
+                                    <div class="difficulty-checkmark position-absolute top-0 end-0 m-2">
                                         <i class="bi bi-check-circle-fill text-success fs-4"></i>
                                     </div>
                                     <i class="bi bi-emoji-smile text-success" style="font-size: 2rem;"></i>
@@ -175,7 +175,7 @@ ob_start();
                         <button id="startGameBtn" class="btn btn-primary btn-lg" disabled>
                             <i class="bi bi-play-circle"></i> Start Game
                         </button>
-                        <p class="text-muted mt-2">Select a theme and difficulty to begin</p>
+                        <p class="text-muted mt-2">Animals theme and Easy difficulty are pre-selected. Click Start Game to begin!</p>
                     </div>
                 </div>
             </div>

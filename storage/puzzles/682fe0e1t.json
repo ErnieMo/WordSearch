@@ -1,0 +1,228 @@
+{
+    "id": "682fe0e1t",
+    "created_at": "2025-08-22 18:01:24",
+    "grid": [
+        [
+            "S",
+            "D",
+            "O",
+            "W",
+            "L",
+            "Q",
+            "J",
+            "L",
+            "B",
+            "P"
+        ],
+        [
+            "A",
+            "O",
+            "N",
+            "R",
+            "B",
+            "D",
+            "C",
+            "T",
+            "E",
+            "E"
+        ],
+        [
+            "L",
+            "L",
+            "S",
+            "K",
+            "L",
+            "U",
+            "G",
+            "B",
+            "A",
+            "A"
+        ],
+        [
+            "A",
+            "P",
+            "Y",
+            "T",
+            "E",
+            "T",
+            "A",
+            "U",
+            "R",
+            "C"
+        ],
+        [
+            "M",
+            "H",
+            "A",
+            "Z",
+            "G",
+            "M",
+            "F",
+            "W",
+            "F",
+            "O"
+        ],
+        [
+            "A",
+            "I",
+            "V",
+            "S",
+            "D",
+            "J",
+            "W",
+            "X",
+            "V",
+            "C"
+        ],
+        [
+            "N",
+            "N",
+            "R",
+            "F",
+            "S",
+            "Y",
+            "Y",
+            "C",
+            "G",
+            "K"
+        ],
+        [
+            "D",
+            "R",
+            "G",
+            "T",
+            "S",
+            "T",
+            "I",
+            "D",
+            "O",
+            "F"
+        ],
+        [
+            "E",
+            "C",
+            "A",
+            "M",
+            "E",
+            "L",
+            "T",
+            "K",
+            "A",
+            "U"
+        ],
+        [
+            "R",
+            "R",
+            "O",
+            "B",
+            "I",
+            "N",
+            "C",
+            "V",
+            "T",
+            "V"
+        ]
+    ],
+    "words": [
+        "SALAMANDER",
+        "PEACOCK",
+        "DOLPHIN",
+        "ROBIN",
+        "CAMEL",
+        "BEAR",
+        "GOAT",
+        "OWL"
+    ],
+    "placed": [
+        {
+            "word": "SALAMANDER",
+            "placed": "SALAMANDER",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 0
+        },
+        {
+            "word": "PEACOCK",
+            "placed": "PEACOCK",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 9
+        },
+        {
+            "word": "DOLPHIN",
+            "placed": "DOLPHIN",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 1
+        },
+        {
+            "word": "ROBIN",
+            "placed": "ROBIN",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 9,
+            "startCol": 1
+        },
+        {
+            "word": "CAMEL",
+            "placed": "CAMEL",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 8,
+            "startCol": 1
+        },
+        {
+            "word": "BEAR",
+            "placed": "BEAR",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 8
+        },
+        {
+            "word": "GOAT",
+            "placed": "GOAT",
+            "direction": [
+                1,
+                0
+            ],
+            "reverse": false,
+            "startRow": 6,
+            "startCol": 8
+        },
+        {
+            "word": "OWL",
+            "placed": "OWL",
+            "direction": [
+                0,
+                1
+            ],
+            "reverse": false,
+            "startRow": 0,
+            "startCol": 2
+        }
+    ],
+    "size": 10,
+    "seed": 458975094
+}

@@ -39,7 +39,23 @@
 
         if (puzzleId && window.location.pathname === '/play') {
             loadPuzzle(puzzleId);
+        } else if (window.location.pathname === '/') {
+            // Set default selections on home page
+            setDefaultSelections();
         }
+    }
+
+    function setDefaultSelections() {
+        // Set Animals as default theme
+        gameState.selectedTheme = 'animals';
+
+        // Set Easy as default difficulty
+        gameState.selectedDifficulty = 'easy';
+
+        // Enable start game button since both are selected
+        $('#startGameBtn').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
+
+        console.log('Default selections set: Animals theme, Easy difficulty');
     }
 
     function setupEventListeners() {
