@@ -1,12 +1,12 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => NULL,
-        'name' => 'wem/wordsearch',
+        'reference' => '810d5fe17643be6a50826c6562283c8f1dfb403c',
+        'name' => 'wordsearch/app',
         'dev' => true,
     ),
     'versions' => array(
@@ -64,13 +64,13 @@
             'reference' => '24ac4c74f91ee2c193fa1aaa5c249cb0822809af',
             'dev_requirement' => false,
         ),
-        'wem/wordsearch' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
+        'wordsearch/app' => array(
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => NULL,
+            'reference' => '810d5fe17643be6a50826c6562283c8f1dfb403c',
             'dev_requirement' => false,
         ),
     ),

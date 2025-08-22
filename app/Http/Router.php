@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Services\DatabaseService;
+use App\Services\PuzzleGenerator;
+use App\Services\PuzzleStore;
+use App\Services\ThemeService;
+
 class Router
 {
     private array $routes = [];
     private array $config;
+    private DatabaseService $dbService;
 
-    public function __construct(array $config)
+    public function __construct(array $config, DatabaseService $dbService)
     {
         $this->config = $config;
+        $this->dbService = $dbService;
     }
 
     public function get(string $path, callable $handler): void
@@ -24,155 +31,216 @@ class Router
         $this->routes['POST'][$path] = $handler;
     }
 
-    public function dispatch(string $method, string $uri): mixed
+    public function dispatch(): void
     {
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        
         // Remove query string
-        $path = parse_url($uri, PHP_URL_PATH);
+        $uri = parse_url($uri, PHP_URL_PATH);
         
-        // Remove trailing slash
-        $path = rtrim($path, '/');
-        if (empty($path)) {
-            $path = '/';
+        // Check for exact match first
+        if (isset($this->routes[$method][$uri])) {
+            $handler = $this->routes[$method][$uri];
+            $handler();
+            return;
         }
-
-        // Check if route exists
-        if (!isset($this->routes[$method][$path])) {
-            // Check for API routes
-            if (str_starts_with($path, '/api/')) {
-                return $this->handleApiRoute($method, $path);
-            }
-            
-            // Default to home page
-            if ($path !== '/') {
-                $path = '/';
+        
+        // Check for parameterized routes
+        foreach ($this->routes[$method] ?? [] as $route => $handler) {
+            $pattern = $this->routeToPattern($route);
+            if (preg_match($pattern, $uri, $matches)) {
+                array_shift($matches); // Remove full match
+                $handler(...$matches);
+                return;
             }
         }
-
-        $handler = $this->routes[$method][$path] ?? $this->routes['GET']['/'];
         
-        return $handler($this->config);
-    }
-
-    private function handleApiRoute(string $method, string $path): mixed
-    {
-        // Extract API endpoint
-        $endpoint = substr($path, 5); // Remove '/api/'
-        
-        switch ($endpoint) {
-            case 'generate':
-                if ($method === 'POST') {
-                    return $this->handleGeneratePuzzle();
-                }
-                break;
-            case (preg_match('/^puzzle\/(.+)$/', $endpoint, $matches) ? true : false):
-                if ($method === 'GET') {
-                    return $this->handleGetPuzzle($matches[1]);
-                }
-                break;
-            case 'themes':
-                if ($method === 'GET') {
-                    return $this->handleGetThemes();
-                }
-                break;
-            case 'validate':
-                if ($method === 'POST') {
-                    return $this->handleValidateWord();
-                }
-                break;
-        }
-
+        // No route found
         http_response_code(404);
-        return json_encode(['error' => 'API endpoint not found']);
+        echo '404 Not Found';
     }
 
-    private function handleGeneratePuzzle(): string
+    private function routeToPattern(string $route): string
     {
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!$input || !isset($input['words']) || !isset($input['options'])) {
-            http_response_code(400);
-            return json_encode(['error' => 'Invalid input']);
-        }
-
-        $generator = new \App\Services\PuzzleGenerator($this->config);
-        $puzzle = $generator->generate($input['words'], $input['options']);
-        
-        $store = new \App\Services\PuzzleStore($this->config);
-        $id = $store->save($puzzle);
-        
-        $puzzle['id'] = $id;
-        
-        header('Content-Type: application/json');
-        return json_encode($puzzle);
+        return '#^' . preg_replace('#\{([^}]+)\}#', '([^/]+)', $route) . '$#';
     }
 
-    private function handleGetPuzzle(string $id): string
+    public function handleGeneratePuzzle(): string
     {
-        $store = new \App\Services\PuzzleStore($this->config);
-        $puzzle = $store->load($id);
-        
-        if (!$puzzle) {
-            http_response_code(404);
-            return json_encode(['error' => 'Puzzle not found']);
-        }
-        
-        header('Content-Type: application/json');
-        return json_encode($puzzle);
-    }
-
-    private function handleValidateWord(): string
-    {
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!$input || !isset($input['id']) || !isset($input['selection'])) {
-            http_response_code(400);
-            return json_encode(['error' => 'Invalid input']);
-        }
-
-        // For MVP, we'll do basic validation
-        // In a full implementation, this would validate against the stored puzzle
-        $store = new \App\Services\PuzzleStore($this->config);
-        $puzzle = $store->load($input['id']);
-        
-        if (!$puzzle) {
-            http_response_code(404);
-            return json_encode(['error' => 'Puzzle not found']);
-        }
-
-        // Simple validation - check if selection forms a valid word
-        $isValid = $this->validateSelection($input['selection'], $puzzle);
-        
-        header('Content-Type: application/json');
-        return json_encode(['valid' => $isValid]);
-    }
-
-    private function validateSelection(array $selection, array $puzzle): bool
-    {
-        // Basic validation - check if selection coordinates are within bounds
-        $size = $puzzle['size'];
-        
-        foreach ($selection as $coord) {
-            if (!isset($coord['r0'], $coord['c0'], $coord['r1'], $coord['c1'])) {
-                return false;
-            }
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
             
-            if ($coord['r0'] < 0 || $coord['r0'] >= $size || 
-                $coord['c0'] < 0 || $coord['c0'] >= $size ||
-                $coord['r1'] < 0 || $coord['r1'] >= $size || 
-                $coord['c1'] < 0 || $coord['c1'] >= $size) {
-                return false;
+            if (!$input || !isset($input['words']) || !isset($input['options'])) {
+                throw new \Exception('Invalid input data');
             }
+
+            $words = $input['words'];
+            $options = $input['options'];
+
+            // Validate input
+            if (empty($words) || !is_array($words)) {
+                throw new \Exception('Words array is required');
+            }
+
+            if (!isset($options['size']) || !isset($options['diagonals']) || !isset($options['reverse'])) {
+                throw new \Exception('Invalid options');
+            }
+
+            // Generate puzzle
+            $generator = new PuzzleGenerator($this->config);
+            $puzzle = $generator->generate($words, $options);
+
+            // Store puzzle in database
+            $puzzleId = $this->storePuzzleInDatabase($puzzle, $options);
+
+            header('Content-Type: application/json');
+            return json_encode([
+                'success' => true,
+                'id' => $puzzleId,
+                'message' => 'Puzzle generated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            header('Content-Type: application/json');
+            http_response_code(400);
+            return json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
         }
-        
-        return true;
     }
 
-    private function handleGetThemes(): string
+    public function handleGetPuzzle(string $id): string
     {
-        $themeService = new \App\Services\ThemeService($this->config);
-        $themes = $themeService->getAvailableThemes();
-        
-        header('Content-Type: application/json');
-        return json_encode($themes);
+        try {
+            $puzzle = $this->getPuzzleFromDatabase($id);
+            
+            if (!$puzzle) {
+                throw new \Exception('Puzzle not found');
+            }
+
+            header('Content-Type: application/json');
+            return json_encode($puzzle);
+
+        } catch (\Exception $e) {
+            header('Content-Type: application/json');
+            http_response_code(404);
+            return json_encode([
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function handleValidateWord(): string
+    {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            
+            if (!$input || !isset($input['puzzleId']) || !isset($input['word'])) {
+                throw new \Exception('Invalid input data');
+            }
+
+            $puzzleId = $input['puzzleId'];
+            $word = $input['word'];
+
+            $puzzle = $this->getPuzzleFromDatabase($puzzleId);
+            if (!$puzzle) {
+                throw new \Exception('Puzzle not found');
+            }
+
+            $isValid = in_array($word, $puzzle['words']);
+
+            header('Content-Type: application/json');
+            return json_encode([
+                'success' => true,
+                'valid' => $isValid,
+                'word' => $word
+            ]);
+
+        } catch (\Exception $e) {
+            header('Content-Type: application/json');
+            http_response_code(400);
+            return json_encode([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function handleGetThemes(): string
+    {
+        try {
+            $themeService = new ThemeService($this->config);
+            $themes = $themeService->getAvailableThemes();
+
+            header('Content-Type: application/json');
+            return json_encode($themes);
+
+        } catch (\Exception $e) {
+            header('Content-Type: application/json');
+            http_response_code(500);
+            return json_encode([
+                'error' => 'Failed to load themes'
+            ]);
+        }
+    }
+
+    private function storePuzzleInDatabase(array $puzzle, array $options): string
+    {
+        try {
+            $puzzleId = $puzzle['id'];
+            
+            $this->dbService->insert('puzzles', [
+                'puzzle_id' => $puzzleId,
+                'theme' => 'custom', // Default theme for generated puzzles
+                'difficulty' => $this->getDifficultyFromSize($options['size']),
+                'grid_size' => $options['size'],
+                'words' => json_encode($puzzle['words']),
+                'grid' => json_encode($puzzle['grid']),
+                'placed_words' => json_encode($puzzle['placed']),
+                'seed' => $puzzle['seed']
+            ]);
+
+            return $puzzleId;
+
+        } catch (\Exception $e) {
+            // Fallback to file storage if database fails
+            $store = new PuzzleStore();
+            $store->save($puzzle);
+            return $puzzle['id'];
+        }
+    }
+
+    private function getPuzzleFromDatabase(string $id): ?array
+    {
+        try {
+            $puzzle = $this->dbService->findOne('puzzles', 'puzzle_id = :id', ['id' => $id]);
+            
+            if (!$puzzle) {
+                return null;
+            }
+
+            return [
+                'id' => $puzzle['puzzle_id'],
+                'grid' => json_decode($puzzle['grid'], true),
+                'words' => json_decode($puzzle['words'], true),
+                'placed' => json_decode($puzzle['placed_words'], true),
+                'size' => $puzzle['grid_size'],
+                'seed' => $puzzle['seed']
+            ];
+
+        } catch (\Exception $e) {
+            // Fallback to file storage if database fails
+            $store = new PuzzleStore();
+            return $store->load($id);
+        }
+    }
+
+    private function getDifficultyFromSize(int $size): string
+    {
+        if ($size <= 10) return 'easy';
+        if ($size <= 15) return 'medium';
+        return 'hard';
     }
 }
