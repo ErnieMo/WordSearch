@@ -236,15 +236,27 @@ class Router
     public function handleGeneratePuzzle(): void
     {
         $data = $this->getRequestData();
-        $words = $data['words'] ?? [];
+        $themeId = $data['theme_id'] ?? '';
         $options = $data['options'] ?? [];
         
-        if (empty($words)) {
-            $this->sendErrorResponse('No words provided', 400);
+        if (empty($themeId)) {
+            $this->sendErrorResponse('No theme ID provided', 400);
             return;
         }
         
         try {
+            // Determine word count based on difficulty
+            $difficulty = $options['difficulty'] ?? 'medium';
+            $wordCount = $difficulty === 'easy' ? 10 : 15;
+            
+            // Get random words from the theme service
+            $words = $this->themeService->getRandomWords($themeId, $wordCount);
+            
+            if (empty($words)) {
+                $this->sendErrorResponse('No words available for this theme', 400);
+                return;
+            }
+            
             $puzzle = $this->puzzleGenerator->generatePuzzle($words, $options);
             
             // Save puzzle to storage

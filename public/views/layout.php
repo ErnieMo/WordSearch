@@ -48,7 +48,7 @@
                         <a class="nav-link" href="/"><i class="bi bi-house me-1"></i>Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/play"><i class="bi bi-play-circle me-1"></i>Play</a>
+                        <a class="nav-link" href="#" id="playLink"><i class="bi bi-play-circle me-1"></i>Play</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/create"><i class="bi bi-plus-circle me-1"></i>Create</a>

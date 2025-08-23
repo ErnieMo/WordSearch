@@ -89,20 +89,7 @@
         gridContainer.append(table);
 
         // Setup grid interaction
-        console.log('Setting up grid interaction...');
-        console.log('setupGridInteraction function exists:', typeof setupGridInteraction);
-        try {
-            setupGridInteraction();
-            console.log('Grid interaction setup complete');
-        } catch (error) {
-            console.error('Error setting up grid interaction:', error);
-        }
-
-        // Verify the events were bound
-        console.log('Checking if selection events are bound...');
-        const gridElement = $('.word-grid');
-        console.log('Grid element found:', gridElement.length > 0);
-        console.log('Grid element:', gridElement[0]);
+        setupGridInteraction();
 
         // Test basic event binding
         $('.word-grid').on('click', 'td', function () {
@@ -229,8 +216,6 @@
 
     // Setup grid interaction (click and drag for desktop, touch for mobile)
     function setupGridInteraction() {
-        console.log('=== setupGridInteraction START ===');
-        console.log('setupGridInteraction called');
         let isSelecting = false;
         let startCell = null;
         let currentTouchCell = null;
@@ -242,16 +227,10 @@
             isTouchDevice = false;
         }
 
-        console.log('Touch device detected:', isTouchDevice);
-        console.log('ontouchstart available:', 'ontouchstart' in window);
-        console.log('maxTouchPoints:', navigator.maxTouchPoints);
-
         if (isTouchDevice) {
             // Touch device handling (iPhone, iPad, etc.)
-            console.log('Setting up touch event handlers');
 
             $('.word-grid').on('touchstart', 'td', function (e) {
-                console.log('Touch start detected on cell:', $(this).data('r'), $(this).data('c'));
                 e.preventDefault();
                 isSelecting = true;
                 startCell = { r: $(this).data('r'), c: $(this).data('c') };
@@ -277,7 +256,6 @@
 
                     // Only update if we're on a different cell
                     if (newCell.r !== currentTouchCell.r || newCell.c !== currentTouchCell.c) {
-                        console.log('Touch move to cell:', newCell.r, newCell.c);
                         currentTouchCell = newCell;
                         updateSelectionLine(startCell, currentTouchCell);
                     }
@@ -286,7 +264,6 @@
 
             $('.word-grid').on('touchend', 'td', function (e) {
                 if (isSelecting) {
-                    console.log('Touch end - finishing selection');
                     finishSelection();
                 }
                 isSelecting = false;
@@ -297,7 +274,6 @@
             // Also handle document touchend for safety
             $(document).on('touchend', function (e) {
                 if (isSelecting) {
-                    console.log('Document touch end - finishing selection');
                     finishSelection();
                 }
                 isSelecting = false;
@@ -306,29 +282,21 @@
             });
         } else {
             // Desktop mouse handling
-            console.log('Setting up mouse event handlers');
 
             // Use event delegation for better performance
             $('.word-grid').on('mousedown', 'td', function (e) {
-                console.log('Mouse down detected on cell:', $(this).data('r'), $(this).data('c'));
                 e.preventDefault();
                 isSelecting = true;
                 startCell = { r: $(this).data('r'), c: $(this).data('c') };
                 gameState.selectedCells = [startCell];
 
-                console.log('Selection state set - isSelecting:', isSelecting, 'startCell:', startCell);
                 $(this).addClass('selected');
                 updateSelection();
-
-                // Test if the selected class was added
-                console.log('Cell has selected class:', $(this).hasClass('selected'));
-                console.log('Cell background color:', $(this).css('background-color'));
             });
 
             $('.word-grid').on('mouseenter', 'td', function (e) {
                 if (isSelecting && startCell) {
                     const currentCell = { r: $(this).data('r'), c: $(this).data('c') };
-                    console.log('Mouse enter on cell:', currentCell.r, currentCell.c);
                     updateSelectionLine(startCell, currentCell);
                 }
             });
@@ -345,41 +313,30 @@
 
                         // Only update if we're on a different cell
                         if (currentCell.r !== startCell.r || currentCell.c !== startCell.c) {
-                            console.log('Mouse move to cell:', currentCell.r, currentCell.c);
                             updateSelectionLine(startCell, currentCell);
                         }
-                    }
-                } else {
-                    // Debug: log when mousemove is triggered but selection is not active
-                    if (e.target.tagName === 'TD') {
-                        console.log('Mousemove on cell but not selecting - isSelecting:', isSelecting, 'startCell:', startCell);
                     }
                 }
             });
 
             $(document).on('mouseup', function () {
                 if (isSelecting) {
-                    console.log('Mouse up - finishing selection');
                     finishSelection();
                 }
                 isSelecting = false;
                 startCell = null;
             });
         }
-        console.log('=== setupGridInteraction END ===');
     }
 
     // Update selection line between two cells
     function updateSelectionLine(start, end) {
-        console.log('updateSelectionLine called:', start, end);
-
         // Clear previous selection
         $('.word-grid td').removeClass('selected');
         gameState.selectedCells = [];
 
         // Calculate cells in the line
         const cells = getCellsInLine(start, end);
-        console.log('Cells in line:', cells);
 
         cells.forEach(cell => {
             $(`.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`).addClass('selected');

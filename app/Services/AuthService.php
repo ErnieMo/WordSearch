@@ -64,7 +64,7 @@ class AuthService
     {
         // Find user by username OR email
         $user = $this->db->fetchOne(
-            "SELECT id, username, password, first_name, last_name FROM users WHERE (username = :username OR email = :email) AND is_active = true",
+            "SELECT id, username, password, first_name, last_name, default_theme, default_level FROM users WHERE (username = :username OR email = :email) AND is_active = true",
             ['username' => $usernameOrEmail, 'email' => $usernameOrEmail]
         );
 
@@ -81,6 +81,8 @@ class AuthService
             'username' => $user['username'],
             'first_name' => $user['first_name'],
             'last_name' => $user['last_name'],
+            'default_theme' => $user['default_theme'] ?? 'animals',
+            'default_level' => $user['default_level'] ?? 'medium',
             'token' => $token,
             'message' => 'Login successful'
         ];

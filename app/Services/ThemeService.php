@@ -92,10 +92,20 @@ class ThemeService
         if (count($words) <= $count) {
             return $words;
         }
-
-        // Shuffle and take first $count words
-        shuffle($words);
-        return array_slice($words, 0, $count);
+        
+        // Fisher-Yates shuffle for better performance and true randomness
+        $shuffled = $words;
+        $total = count($shuffled);
+        
+        for ($i = $total - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            // Swap elements
+            $temp = $shuffled[$i];
+            $shuffled[$i] = $shuffled[$j];
+            $shuffled[$j] = $temp;
+        }
+        
+        return array_slice($shuffled, 0, $count);
     }
 
     public function getWordsByDifficulty(string $themeId, string $difficulty): array
