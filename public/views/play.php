@@ -46,6 +46,21 @@ if (empty($puzzleId)) {
                     </div>
                 </div>
                 
+                <!-- Verification Status -->
+                <div class="card mb-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bi bi-check-circle me-2"></i>Verification</h6>
+                    </div>
+                    <div class="card-body text-center">
+                        <div id="verificationStatus" class="mb-2">
+                            <div class="spinner-border spinner-border-sm text-warning" role="status">
+                                <span class="visually-hidden">Verifying...</span>
+                            </div>
+                            <small class="text-muted">Verifying words...</small>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Progress -->
                 <div class="card mb-3">
                     <div class="card-header bg-info text-white">

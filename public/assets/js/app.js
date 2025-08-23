@@ -232,18 +232,49 @@
         const themeGrid = $('#themeGrid');
         themeGrid.empty();
         
+        // Define theme icons and colors
+        const themeIcons = {
+            'animals': 'bi-egg-fried',
+            'automotive': 'bi-car-front',
+            'food': 'bi-cup-hot',
+            'geography': 'bi-globe',
+            'medical': 'bi-heart-pulse',
+            'technology': 'bi-laptop'
+        };
+        
+        const themeColors = {
+            'animals': 'success',
+            'automotive': 'dark',
+            'food': 'warning',
+            'geography': 'info',
+            'medical': 'danger',
+            'technology': 'primary'
+        };
+        
         themes.forEach(theme => {
+            const icon = themeIcons[theme.id] || 'bi-palette';
+            const color = themeColors[theme.id] || 'secondary';
+            
             const themeCard = $(`
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="card theme-card h-100" data-theme-id="${theme.id}">
-                        <div class="card-header bg-primary text-white text-center">
-                            <h6 class="mb-0">${theme.name}</h6>
+                        <div class="card-header bg-${color} text-white text-center">
+                            <h6 class="mb-0">
+                                <i class="bi ${icon} me-2"></i>
+                                ${theme.name}
+                            </h6>
                         </div>
                         <div class="card-body text-center">
                             <p class="text-muted small mb-2">${theme.description}</p>
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="badge bg-secondary">${theme.word_count} words</span>
-                                <span class="badge bg-${getDifficultyColor(theme.difficulty)}">${theme.difficulty}</span>
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-list-ul me-1"></i>
+                                    ${theme.word_count} words
+                                </string>
+                                <span class="badge bg-${getDifficultyColor(theme.difficulty)}">
+                                    <i class="bi bi-speedometer2 me-1"></i>
+                                    ${theme.difficulty}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -252,6 +283,9 @@
             
             themeGrid.append(themeCard);
         });
+        
+        // Log the themes that were loaded
+        console.log(`Rendered ${themes.length} themes:`, themes.map(t => t.name));
     }
 
     function getDifficultyColor(difficulty) {

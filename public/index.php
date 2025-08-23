@@ -9,6 +9,13 @@ require_once __DIR__ . '/../vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
 
+// Also populate system environment variables for getenv() compatibility
+foreach ($_ENV as $key => $value) {
+    if (!getenv($key)) {
+        putenv("$key=$value");
+    }
+}
+
 // Set error reporting for development
 if ($_ENV['APP_ENV'] ?? 'development' === 'development') {
     error_reporting(E_ALL);

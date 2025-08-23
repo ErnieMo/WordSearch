@@ -151,11 +151,6 @@ class Router
     {
         $data = $this->getRequestData();
         
-        // Debug logging
-        error_log("Login handler received data: " . print_r($data, true));
-        error_log("Username: " . ($data['username'] ?? 'NOT SET'));
-        error_log("Password: " . ($data['password'] ?? 'NOT SET'));
-        
         try {
             $result = $this->authService->login(
                 $data['username'] ?? '',
@@ -164,7 +159,6 @@ class Router
             
             $this->sendJsonResponse($result);
         } catch (\Exception $e) {
-            error_log("Login error: " . $e->getMessage());
             $this->sendErrorResponse($e->getMessage(), 400);
         }
     }
@@ -398,18 +392,7 @@ class Router
     private function getRequestData(): array
     {
         $input = file_get_contents('php://input');
-        
-        // Debug logging
-        error_log("Raw input received: " . $input);
-        error_log("Input length: " . strlen($input));
-        
-        $decoded = json_decode($input, true);
-        if ($decoded === null) {
-            error_log("JSON decode error: " . json_last_error_msg());
-            error_log("JSON last error: " . json_last_error());
-        }
-        
-        return $decoded ?? [];
+        return json_decode($input, true) ?? [];
     }
 
     private function getAuthToken(): ?string

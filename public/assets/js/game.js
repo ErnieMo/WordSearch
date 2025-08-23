@@ -17,9 +17,12 @@
 
     // DOM ready
     $(document).ready(function () {
+        console.log('DOM ready, puzzleId:', window.puzzleId);
         if (window.puzzleId) {
             loadPuzzle(window.puzzleId);
             setupGameEventListeners();
+        } else {
+            console.error('No puzzleId found');
         }
     });
 
@@ -55,6 +58,9 @@
         renderGrid();
         renderWordList();
         updateProgress();
+
+        // Verify all words are in the grid and highlight them
+        verifyAllWords();
     }
 
     // Render the word search grid
@@ -83,7 +89,30 @@
         gridContainer.append(table);
 
         // Setup grid interaction
-        setupGridInteraction();
+        console.log('Setting up grid interaction...');
+        console.log('setupGridInteraction function exists:', typeof setupGridInteraction);
+        try {
+            setupGridInteraction();
+            console.log('Grid interaction setup complete');
+        } catch (error) {
+            console.error('Error setting up grid interaction:', error);
+        }
+
+        // Verify the events were bound
+        console.log('Checking if selection events are bound...');
+        const gridElement = $('.word-grid');
+        console.log('Grid element found:', gridElement.length > 0);
+        console.log('Grid element:', gridElement[0]);
+
+        // Test basic event binding
+        $('.word-grid').on('click', 'td', function () {
+            console.log('Basic click test - cell clicked:', $(this).data('r'), $(this).data('c'));
+            // Also test if we can add/remove classes
+            $(this).toggleClass('test-highlight');
+            setTimeout(() => {
+                $(this).removeClass('test-highlight');
+            }, 500);
+        });
     }
 
     // Render the word list
@@ -105,56 +134,272 @@
         $('#totalWords').text(gameState.words.length);
     }
 
-    // Setup grid interaction (click and drag)
+    // Verify all words are in the grid and highlight them
+    function verifyAllWords() {
+        console.log('Verifying all words are in the grid...');
+
+        const verifiedWords = [];
+        const unverifiedWords = [];
+
+        gameState.words.forEach(word => {
+            if (isWordInGrid(word)) {
+                verifiedWords.push(word);
+                // Highlight the word in the word list
+                $(`.word-item[data-word="${word}"]`).addClass('verified');
+            } else {
+                unverifiedWords.push(word);
+                console.warn(`Word "${word}" not found in grid!`);
+            }
+        });
+
+        // Update verification status display
+        updateVerificationStatus(verifiedWords.length, gameState.words.length);
+
+        // Show verification results
+        if (verifiedWords.length === gameState.words.length) {
+            console.log(`✅ All ${verifiedWords.length} words verified in grid`);
+            showAlert(`All ${verifiedWords.length} words verified and ready to find!`, 'success');
+        } else {
+            console.warn(`⚠️ Only ${verifiedWords.length}/${gameState.words.length} words verified`);
+            showAlert(`Warning: Only ${verifiedWords.length}/${gameState.words.length} words verified in grid`, 'warning');
+        }
+
+        // Store verification results
+        gameState.verifiedWords = verifiedWords;
+        gameState.unverifiedWords = unverifiedWords;
+    }
+
+    // Check if a word exists in the grid (in any direction)
+    function isWordInGrid(word) {
+        const directions = [
+            { dr: 0, dc: 1 },   // horizontal
+            { dr: 1, dc: 0 },   // vertical
+            { dr: 1, dc: 1 },   // diagonal down-right
+            { dr: 1, dc: -1 },  // diagonal down-left
+            { dr: -1, dc: 1 },  // diagonal up-right
+            { dr: -1, dc: -1 }  // diagonal up-left
+        ];
+
+        const grid = gameState.grid;
+        const rows = grid.length;
+        const cols = grid[0].length;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                for (const dir of directions) {
+                    if (checkWordAtPosition(word, r, c, dir.dr, dir.dc)) {
+                        return true;
+                    }
+                    // Also check reverse
+                    if (checkWordAtPosition(word.split('').reverse().join(''), r, c, dir.dr, dir.dc)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // Check if a word exists at a specific position and direction
+    function checkWordAtPosition(word, startR, startC, dr, dc) {
+        const grid = gameState.grid;
+        const rows = grid.length;
+        const cols = grid[0].length;
+
+        // Check if word fits in this direction
+        const endR = startR + (word.length - 1) * dr;
+        const endC = startC + (word.length - 1) * dc;
+
+        if (endR < 0 || endR >= rows || endC < 0 || endC >= cols) {
+            return false;
+        }
+
+        // Check each character
+        for (let i = 0; i < word.length; i++) {
+            const r = startR + i * dr;
+            const c = startC + i * dc;
+            if (grid[r][c] !== word[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Setup grid interaction (click and drag for desktop, touch for mobile)
     function setupGridInteraction() {
+        console.log('=== setupGridInteraction START ===');
+        console.log('setupGridInteraction called');
         let isSelecting = false;
         let startCell = null;
+        let currentTouchCell = null;
+        // More accurate touch device detection
+        let isTouchDevice = 'ontouchstart' in window && navigator.maxTouchPoints > 0;
 
-        $('.word-grid td').on('mousedown touchstart', function (e) {
-            e.preventDefault();
-            isSelecting = true;
-            startCell = { r: $(this).data('r'), c: $(this).data('c') };
-            gameState.selectedCells = [startCell];
+        // Additional check: if we're on desktop and have a mouse, prefer mouse events
+        if (navigator.userAgent.includes('Windows') || navigator.userAgent.includes('Mac')) {
+            isTouchDevice = false;
+        }
 
-            $(this).addClass('selected');
-            updateSelection();
-        });
+        console.log('Touch device detected:', isTouchDevice);
+        console.log('ontouchstart available:', 'ontouchstart' in window);
+        console.log('maxTouchPoints:', navigator.maxTouchPoints);
 
-        $('.word-grid td').on('mouseenter touchenter', function (e) {
-            if (isSelecting && startCell) {
-                const currentCell = { r: $(this).data('r'), c: $(this).data('c') };
+        if (isTouchDevice) {
+            // Touch device handling (iPhone, iPad, etc.)
+            console.log('Setting up touch event handlers');
 
-                // Clear previous selection
-                $('.word-grid td').removeClass('selected');
-                gameState.selectedCells = [];
+            $('.word-grid').on('touchstart', 'td', function (e) {
+                console.log('Touch start detected on cell:', $(this).data('r'), $(this).data('c'));
+                e.preventDefault();
+                isSelecting = true;
+                startCell = { r: $(this).data('r'), c: $(this).data('c') };
+                currentTouchCell = startCell;
+                gameState.selectedCells = [startCell];
 
-                // Calculate cells in the line
-                const cells = getCellsInLine(startCell, currentCell);
-                cells.forEach(cell => {
-                    $(`.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`).addClass('selected');
-                    gameState.selectedCells.push(cell);
-                });
-
+                $(this).addClass('selected');
                 updateSelection();
-            }
-        });
+            });
 
-        $(document).on('mouseup touchend', function () {
-            if (isSelecting) {
+            $('.word-grid').on('touchmove', 'td', function (e) {
+                if (!isSelecting) return;
+
+                e.preventDefault();
+
+                // Get touch position and find the cell
+                const touch = e.originalEvent.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                const cell = $(element).closest('td');
+
+                if (cell.length && cell.closest('.word-grid').length > 0) {
+                    const newCell = { r: cell.data('r'), c: cell.data('c') };
+
+                    // Only update if we're on a different cell
+                    if (newCell.r !== currentTouchCell.r || newCell.c !== currentTouchCell.c) {
+                        console.log('Touch move to cell:', newCell.r, newCell.c);
+                        currentTouchCell = newCell;
+                        updateSelectionLine(startCell, currentTouchCell);
+                    }
+                }
+            });
+
+            $('.word-grid').on('touchend', 'td', function (e) {
+                if (isSelecting) {
+                    console.log('Touch end - finishing selection');
+                    finishSelection();
+                }
                 isSelecting = false;
                 startCell = null;
+                currentTouchCell = null;
+            });
 
-                // Validate selection
-                if (gameState.selectedCells.length > 1) {
-                    validateSelection();
+            // Also handle document touchend for safety
+            $(document).on('touchend', function (e) {
+                if (isSelecting) {
+                    console.log('Document touch end - finishing selection');
+                    finishSelection();
                 }
+                isSelecting = false;
+                startCell = null;
+                currentTouchCell = null;
+            });
+        } else {
+            // Desktop mouse handling
+            console.log('Setting up mouse event handlers');
 
-                // Clear selection
-                $('.word-grid td').removeClass('selected');
-                gameState.selectedCells = [];
+            // Use event delegation for better performance
+            $('.word-grid').on('mousedown', 'td', function (e) {
+                console.log('Mouse down detected on cell:', $(this).data('r'), $(this).data('c'));
+                e.preventDefault();
+                isSelecting = true;
+                startCell = { r: $(this).data('r'), c: $(this).data('c') };
+                gameState.selectedCells = [startCell];
+
+                console.log('Selection state set - isSelecting:', isSelecting, 'startCell:', startCell);
+                $(this).addClass('selected');
                 updateSelection();
-            }
+
+                // Test if the selected class was added
+                console.log('Cell has selected class:', $(this).hasClass('selected'));
+                console.log('Cell background color:', $(this).css('background-color'));
+            });
+
+            $('.word-grid').on('mouseenter', 'td', function (e) {
+                if (isSelecting && startCell) {
+                    const currentCell = { r: $(this).data('r'), c: $(this).data('c') };
+                    console.log('Mouse enter on cell:', currentCell.r, currentCell.c);
+                    updateSelectionLine(startCell, currentCell);
+                }
+            });
+
+            // Also capture mousemove on the entire grid for better drag tracking
+            $('.word-grid').on('mousemove', function (e) {
+                if (isSelecting && startCell) {
+                    // Find which cell the mouse is currently over
+                    const element = document.elementFromPoint(e.clientX, e.clientY);
+                    const cell = $(element).closest('td');
+
+                    if (cell.length && cell.closest('.word-grid').length > 0) {
+                        const currentCell = { r: cell.data('r'), c: cell.data('c') };
+
+                        // Only update if we're on a different cell
+                        if (currentCell.r !== startCell.r || currentCell.c !== startCell.c) {
+                            console.log('Mouse move to cell:', currentCell.r, currentCell.c);
+                            updateSelectionLine(startCell, currentCell);
+                        }
+                    }
+                } else {
+                    // Debug: log when mousemove is triggered but selection is not active
+                    if (e.target.tagName === 'TD') {
+                        console.log('Mousemove on cell but not selecting - isSelecting:', isSelecting, 'startCell:', startCell);
+                    }
+                }
+            });
+
+            $(document).on('mouseup', function () {
+                if (isSelecting) {
+                    console.log('Mouse up - finishing selection');
+                    finishSelection();
+                }
+                isSelecting = false;
+                startCell = null;
+            });
+        }
+        console.log('=== setupGridInteraction END ===');
+    }
+
+    // Update selection line between two cells
+    function updateSelectionLine(start, end) {
+        console.log('updateSelectionLine called:', start, end);
+
+        // Clear previous selection
+        $('.word-grid td').removeClass('selected');
+        gameState.selectedCells = [];
+
+        // Calculate cells in the line
+        const cells = getCellsInLine(start, end);
+        console.log('Cells in line:', cells);
+
+        cells.forEach(cell => {
+            $(`.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`).addClass('selected');
+            gameState.selectedCells.push(cell);
         });
+
+        updateSelection();
+    }
+
+    // Finish the current selection
+    function finishSelection() {
+        // Validate selection
+        if (gameState.selectedCells.length > 1) {
+            validateSelection();
+        }
+
+        // Clear selection
+        $('.word-grid td').removeClass('selected');
+        gameState.selectedCells = [];
+        updateSelection();
     }
 
     // Get cells in a straight line between two points
@@ -404,6 +649,54 @@
         setTimeout(() => {
             alert.fadeOut(() => alert.remove());
         }, 5000);
+    }
+
+    // Update verification status display
+    function updateVerificationStatus(verifiedCount, totalCount) {
+        const statusContainer = $('#verificationStatus');
+
+        if (verifiedCount === totalCount) {
+            statusContainer.html(`
+                <div class="text-success">
+                    <i class="bi bi-check-circle-fill fs-4"></i>
+                    <div class="mt-2">
+                        <strong>All ${verifiedCount} words verified!</strong>
+                        <br>
+                        <small class="text-muted">Ready to play</small>
+                    </div>
+                </div>
+            `);
+        } else {
+            statusContainer.html(`
+                <div class="text-warning">
+                    <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                    <div class="mt-2">
+                        <strong>${verifiedCount}/${totalCount} words verified</strong>
+                        <br>
+                        <small class="text-muted">Some words may be missing</small>
+                    </div>
+                </div>
+            `);
+        }
+    }
+
+    // Show alert function for game.js
+    function showAlert(message, type = 'info') {
+        const alert = $(`
+            <div class="alert alert-${type} alert-dismissible fade show position-fixed" 
+                 style="top: 20px; right: 20px; z-index: 9999;">
+                <i class="bi bi-info-circle me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+
+        $('body').append(alert);
+
+        // Auto-dismiss after 4 seconds
+        setTimeout(() => {
+            alert.fadeOut(() => alert.remove());
+        }, 4000);
     }
 
 })();

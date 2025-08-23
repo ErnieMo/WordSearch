@@ -60,16 +60,16 @@ class AuthService
         ];
     }
 
-    public function login(string $username, string $password): array
+    public function login(string $usernameOrEmail, string $password): array
     {
-        // Find user
+        // Find user by username OR email
         $user = $this->db->fetchOne(
-            "SELECT id, username, password, first_name, last_name FROM users WHERE username = :username AND is_active = true",
-            ['username' => $username]
+            "SELECT id, username, password, first_name, last_name FROM users WHERE (username = :username OR email = :email) AND is_active = true",
+            ['username' => $usernameOrEmail, 'email' => $usernameOrEmail]
         );
 
         if (!$user || !password_verify($password, $user['password'])) {
-            throw new \InvalidArgumentException('Invalid username or password');
+            throw new \InvalidArgumentException('Invalid username/email or password');
         }
 
         // Generate JWT token

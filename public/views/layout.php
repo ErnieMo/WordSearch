@@ -22,11 +22,13 @@
     <link href="/assets/css/app.css" rel="stylesheet">
 </head>
 <body>
+    <?php if (getenv('APP_ENV') === 'development'): ?>
     <!-- Development Environment Banner -->
     <div class="alert alert-warning alert-dismissible fade show m-0 text-center" role="alert">
-        <strong>Development Environment</strong> - This is a development build of the Word Search application.
+        <strong>Development Environment</strong> - This is a <?php echo getenv('APP_ENV'); ?> build of the Word Search application.
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
+    <?php endif; ?>
 
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">

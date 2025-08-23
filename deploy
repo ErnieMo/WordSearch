@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# deploy.sh - update WordSearch Prod with latest git code
+
+# Save current directory
+CURR_DIR="$(pwd)"
+
+# Go into Prod directory
+cd /var/www/html/WordSearch/Prod || {
+  echo "Prod directory not found!"
+  exit 1
+}
+
+# Pull latest code
+echo "[deploy] Running git pull in $(pwd)…"
+git pull
+
+# Return to where we started
+cd "$CURR_DIR" || exit
+echo "[deploy] Back to $CURR_DIR"
+
