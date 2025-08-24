@@ -25,6 +25,7 @@ class PuzzleGenerator
         $diagonals = $options['diagonals'] ?? false;
         $reverse = $options['reverse'] ?? false;
         $seed = $options['seed'] ?? null;
+        $targetWordCount = $options['word_count'] ?? count($words);
 
         if ($seed !== null) {
             mt_srand($seed);
@@ -33,20 +34,37 @@ class PuzzleGenerator
         // Filter and sort words by length
         $filteredWords = $this->filterWords($words, $size);
         $sortedWords = $this->sortWordsByLength($filteredWords);
+        
+        // Create a pool of available words for replacement
+        $wordPool = $sortedWords;
+        $usedWords = [];
 
         // Generate grid
         $grid = $this->createEmptyGrid($size);
         $placedWords = [];
         $failedWords = [];
+        $attempts = 0;
+        $maxAttempts = count($wordPool) * 2; // Limit attempts to avoid infinite loops
 
-        // Try to place each word
-        foreach ($sortedWords as $word) {
+        // Try to place words until we reach target count or run out of attempts
+        while (count($placedWords) < $targetWordCount && $attempts < $maxAttempts && !empty($wordPool)) {
+            $attempts++;
+            
+            // Get next word from pool
+            $word = array_shift($wordPool);
             $placed = $this->placeWord($grid, $word, $diagonals, $reverse);
             
             if ($placed) {
                 $placedWords[] = $placed;
+                $usedWords[] = $word;
             } else {
                 $failedWords[] = $word;
+                
+                // Try to find a replacement word from the original word list
+                $replacementWord = $this->findReplacementWord($word, $words, $usedWords, $size);
+                if ($replacementWord) {
+                    $wordPool[] = $replacementWord;
+                }
             }
         }
 
@@ -59,7 +77,7 @@ class PuzzleGenerator
         return [
             'id' => $puzzleId,
             'grid' => $grid,
-            'words' => $words,
+            'words' => array_slice($usedWords, 0, $targetWordCount), // Return only the words we actually used
             'placed_words' => $placedWords,
             'failed_words' => $failedWords,
             'size' => $size,
@@ -330,5 +348,33 @@ class PuzzleGenerator
         }
         
         return true;
+    }
+
+    /**
+     * Find a replacement word that hasn't been used yet
+     */
+    private function findReplacementWord(string $failedWord, array $allWords, array $usedWords, int $gridSize): ?string
+    {
+        // Filter out words that are too long for the grid
+        $candidates = array_filter($allWords, function($word) use ($gridSize) {
+            $word = strtoupper(trim($word));
+            return strlen($word) <= $gridSize && 
+                   strlen($word) >= 3 && 
+                   preg_match('/^[A-Z]+$/', $word);
+        });
+
+        // Remove already used words
+        $candidates = array_diff($candidates, $usedWords);
+        
+        // Remove the failed word itself
+        $candidates = array_diff($candidates, [$failedWord]);
+        
+        // If no candidates, return null
+        if (empty($candidates)) {
+            return null;
+        }
+        
+        // Return a random candidate
+        return $candidates[array_rand($candidates)];
     }
 }

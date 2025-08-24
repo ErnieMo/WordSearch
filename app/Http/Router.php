@@ -257,6 +257,8 @@ class Router
                 return;
             }
             
+            // Add word_count to options for the puzzle generator
+            $options['word_count'] = $wordCount;
             $puzzle = $this->puzzleGenerator->generatePuzzle($words, $options);
             
             // Save puzzle to storage
