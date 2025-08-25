@@ -87,6 +87,11 @@
     color: white !important;
 }
 
+.word-grid td.space-cell {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
 /* Word list */
 .word-list {
     max-height: 300px;
@@ -288,4 +293,12 @@ footer {
 
 .bg-success-subtle {
     background-color: #d1e7dd !important;
+}
+
+/* Development mode highlighting */
+.dev-highlight {
+    background-color: #fff3cd !important;
+    /* Light yellow */
+    border: 1px solid #ffeaa7 !important;
+    box-shadow: inset 0 0 0 1px #fdcb6e !important;
 }

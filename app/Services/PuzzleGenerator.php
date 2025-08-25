@@ -27,16 +27,30 @@ class PuzzleGenerator
         $seed = $options['seed'] ?? null;
         $targetWordCount = $options['word_count'] ?? count($words);
 
+        error_log("Generating puzzle - Grid size: {$size}, Target words: {$targetWordCount}, Total words available: " . count($words));
+
         if ($seed !== null) {
             mt_srand($seed);
         }
 
-        // Filter and sort words by length
-        $filteredWords = $this->filterWords($words, $size);
-        $sortedWords = $this->sortWordsByLength($filteredWords);
+        // Get ALL words, randomize them, then process one by one
+        $this->logToFile("Total words in theme: " . count($words));
         
-        // Create a pool of available words for replacement
-        $wordPool = $sortedWords;
+        // Randomize the entire word list first using PHP's shuffle()
+        $randomizedWords = $words;
+        shuffle($randomizedWords);
+        $this->logToFile("Randomized all words: " . count($randomizedWords));
+        
+        // Show first 20 randomized words for debugging
+        $firstWords = array_slice($randomizedWords, 0, 20);
+        $this->logToFile("First 20 randomized words: " . implode(', ', $firstWords));
+        
+        // Show word lengths to verify randomization
+        $wordLengths = array_map(function($word) { return strlen($word); }, $firstWords);
+        $this->logToFile("First 20 word lengths: " . implode(', ', $wordLengths));
+        
+        // Create a pool of available words for placement
+        $wordPool = $randomizedWords;
         $usedWords = [];
 
         // Generate grid
@@ -44,29 +58,72 @@ class PuzzleGenerator
         $placedWords = [];
         $failedWords = [];
         $attempts = 0;
-        $maxAttempts = count($wordPool) * 2; // Limit attempts to avoid infinite loops
+        $maxAttempts = count($wordPool) * 3; // Allow more attempts for better placement
 
-        // Try to place words until we reach target count or run out of attempts
+        // Try to place words until we reach target count or run out of attempts/words
         while (count($placedWords) < $targetWordCount && $attempts < $maxAttempts && !empty($wordPool)) {
             $attempts++;
             
             // Get next word from pool
             $word = array_shift($wordPool);
+            $wordLength = strlen(strtoupper(trim($word)));
+            $maxAllowedLength = (int)($size * 0.6); // 60% of grid size
+            
+            $this->logToFile("Processing word '{$word}' (length: {$wordLength}, max allowed: {$maxAllowedLength})");
+            
+            // Check if word meets length requirements
+            if ($wordLength > $maxAllowedLength) {
+                $this->logToFile("Word '{$word}' too long ({$wordLength} > {$maxAllowedLength}), skipping");
+                continue; // Skip this word and try the next one
+            }
+            
+            if ($wordLength < 3) {
+                $this->logToFile("Word '{$word}' too short ({$wordLength} < 3), skipping");
+                continue; // Skip this word and try the next one
+            }
+            
+            // Check if word contains valid characters
+            if (!preg_match('/^[A-Z ]+$/', strtoupper(trim($word)))) {
+                $this->logToFile("Word '{$word}' contains invalid characters, skipping");
+                continue; // Skip this word and try the next one
+            }
+            
+            $this->logToFile("Attempting to place word '{$word}' (attempt {$attempts})");
+            
             $placed = $this->placeWord($grid, $word, $diagonals, $reverse);
             
             if ($placed) {
                 $placedWords[] = $placed;
                 $usedWords[] = $word;
+                $this->logToFile("Successfully placed word '{$word}' - total placed: " . count($placedWords));
+                
+                // Log grid state after placement
+                $emptyCells = 0;
+                for ($r = 0; $r < $size; $r++) {
+                    for ($c = 0; $c < $size; $c++) {
+                        if ($grid[$r][$c] === '') $emptyCells++;
+                    }
+                }
+                $this->logToFile("Grid state: {$emptyCells} empty cells remaining");
             } else {
                 $failedWords[] = $word;
+                $this->logToFile("Failed to place word '{$word}' - total failed: " . count($failedWords));
                 
-                // Try to find a replacement word from the original word list
-                $replacementWord = $this->findReplacementWord($word, $words, $usedWords, $size);
-                if ($replacementWord) {
-                    $wordPool[] = $replacementWord;
+                // If we still need more words, try to get a replacement word from the original list
+                if (count($placedWords) < $targetWordCount) {
+                    $replacementWord = $this->findReplacementWord($word, $words, $usedWords, $size);
+                    if ($replacementWord) {
+                        $wordPool[] = $replacementWord;
+                        $this->logToFile("Added replacement word '{$replacementWord}' to pool");
+                    }
                 }
             }
         }
+
+        // Note: We're now processing all words in the main loop above, so no need for additional word placement here
+        
+        // Log placement results
+        $this->logToFile("Word placement complete - Placed: " . count($placedWords) . ", Failed: " . count($failedWords) . ", Target: {$targetWordCount}");
 
         // Fill empty cells with random letters
         $this->fillEmptyCells($grid);
@@ -74,11 +131,17 @@ class PuzzleGenerator
         // Generate unique puzzle ID
         $puzzleId = $this->generatePuzzleId();
 
+        $finalWords = array_slice($usedWords, 0, $targetWordCount);
+        $finalPlacedWords = array_slice($placedWords, 0, $targetWordCount);
+        
+        $this->logToFile("Final result - Target: {$targetWordCount}, Actual words: " . count($finalWords) . ", Placed words: " . count($finalPlacedWords));
+        $this->logToFile("Words returned: " . implode(', ', $finalWords));
+
         return [
             'id' => $puzzleId,
             'grid' => $grid,
-            'words' => array_slice($usedWords, 0, $targetWordCount), // Return only the words we actually used
-            'placed_words' => $placedWords,
+            'words' => $finalWords,
+            'placed_words' => $finalPlacedWords,
             'failed_words' => $failedWords,
             'size' => $size,
             'options' => $options,
@@ -88,12 +151,28 @@ class PuzzleGenerator
 
     private function filterWords(array $words, int $gridSize): array
     {
-        return array_filter($words, function($word) use ($gridSize) {
+        $maxAllowedLength = (int)($gridSize * 0.6); // 60% of grid width
+        $filteredWords = array_filter($words, function($word) use ($gridSize, $maxAllowedLength) {
             $word = strtoupper(trim($word));
-            return strlen($word) <= min($gridSize, $this->maxWordLen) && 
-                   strlen($word) >= 3 && 
-                   preg_match('/^[A-Z]+$/', $word);
+            $wordLength = strlen($word);
+            
+            // Log words that are filtered out for debugging
+            if ($wordLength > $maxAllowedLength) {
+                $this->logToFile("Word '{$word}' (length: {$wordLength}) filtered out - exceeds {$maxAllowedLength} (60% of grid size {$gridSize})");
+            } elseif ($wordLength < 3) {
+                $this->logToFile("Word '{$word}' (length: {$wordLength}) filtered out - too short (minimum 3)");
+            } elseif (!preg_match('/^[A-Z ]+$/', $word)) {
+                $this->logToFile("Word '{$word}' filtered out - contains invalid characters");
+            }
+            
+            return $wordLength <= $maxAllowedLength && 
+                   $wordLength >= 3 && 
+                   preg_match('/^[A-Z ]+$/', $word);
         });
+        
+        $this->logToFile("Filtered words: " . count($filteredWords) . " out of " . count($words) . " (grid size: {$gridSize}, max length: {$maxAllowedLength})");
+        
+        return $filteredWords;
     }
 
     private function sortWordsByLength(array $words): array
@@ -102,6 +181,30 @@ class PuzzleGenerator
             return strlen($b) - strlen($a);
         });
         return $words;
+    }
+
+    /**
+     * Get random words from the list using Fisher-Yates shuffle
+     */
+    private function getRandomWords(array $words, int $count): array
+    {
+        if (count($words) <= $count) {
+            return $words;
+        }
+        
+        // Fisher-Yates shuffle for better performance and true randomness
+        $shuffled = $words;
+        $total = count($shuffled);
+        
+        for ($i = $total - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            // Swap elements
+            $temp = $shuffled[$i];
+            $shuffled[$i] = $shuffled[$j];
+            $shuffled[$j] = $temp;
+        }
+        
+        return array_slice($shuffled, 0, $count);
     }
 
     private function createEmptyGrid(int $size): array
@@ -122,8 +225,11 @@ class PuzzleGenerator
         $wordLen = strlen($word);
         $gridSize = count($grid);
 
+        $this->logToFile("=== PLACING WORD: '{$word}' (length: {$wordLen}) ===");
+
         // Get available directions
         $availableDirections = $this->getAvailableDirections($diagonals);
+        $this->logToFile("Available directions: " . count($availableDirections) . " (diagonals: " . ($diagonals ? 'true' : 'false') . ")");
         
         // Try multiple starting positions and directions
         $maxAttempts = $gridSize * $gridSize * count($availableDirections) * 2; // *2 for reverse
@@ -142,7 +248,12 @@ class PuzzleGenerator
             // Try both normal and reverse
             $wordToPlace = $reverse && mt_rand(0, 1) ? strrev($word) : $word;
             
+            if ($attempts % 1000 === 0) {
+                $this->logToFile("  Attempt {$attempts}: pos({$startR},{$startC}), dir[" . implode(',', $direction) . "], word: '{$wordToPlace}'");
+            }
+            
             if ($this->canPlaceWord($grid, $wordToPlace, $startR, $startC, $direction)) {
+                $this->logToFile("  SUCCESS at attempt {$attempts}: pos({$startR},{$startC}), dir[" . implode(',', $direction) . "], word: '{$wordToPlace}'");
                 $this->placeWordInGrid($grid, $wordToPlace, $startR, $startC, $direction);
                 
                 return [
@@ -159,6 +270,7 @@ class PuzzleGenerator
             }
         }
 
+        $this->logToFile("  FAILED to place word '{$word}' after {$maxAttempts} attempts");
         return null;
     }
 
@@ -219,10 +331,13 @@ class PuzzleGenerator
     {
         $gridSize = count($grid);
         
+        // Create alphabet without spaces for random filling
+        $fillAlphabet = str_replace(' ', '', $this->alphabet);
+        
         for ($r = 0; $r < $gridSize; $r++) {
             for ($c = 0; $c < $gridSize; $c++) {
                 if ($grid[$r][$c] === '') {
-                    $grid[$r][$c] = $this->alphabet[mt_rand(0, strlen($this->alphabet) - 1)];
+                    $grid[$r][$c] = $fillAlphabet[mt_rand(0, strlen($fillAlphabet) - 1)];
                 }
             }
         }
@@ -230,7 +345,7 @@ class PuzzleGenerator
 
     private function generatePuzzleId(): string
     {
-        return 'puzzle_' . uniqid() . '_' . mt_rand(1000, 9999);
+        return 'p_' . uniqid() . mt_rand(100, 999);
     }
 
     public function validateWordSelection(array $grid, array $selection, array $placedWords): bool
@@ -377,4 +492,24 @@ class PuzzleGenerator
         // Return a random candidate
         return $candidates[array_rand($candidates)];
     }
+
+    /**
+     * Log messages to the generator log file
+     */
+    private function logToFile(string $message): void
+    {
+        $logFile = '/var/www/html/WordSearch/Dev/log/generator.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] {$message}" . PHP_EOL;
+        
+        // Ensure the log directory exists and is writable
+        $logDir = dirname($logFile);
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+        
+        // Write to log file
+        file_put_contents($logFile, $logMessage, FILE_APPEND | LOCK_EX);
+    }
 }
+

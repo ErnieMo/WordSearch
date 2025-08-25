@@ -20,6 +20,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="/assets/css/app.css" rel="stylesheet">
+    
+    <!-- Environment Variables -->
+    <script>
+        window.APP_ENV = '<?php echo getenv('APP_ENV') ?: 'production'; ?>';
+    </script>
 </head>
 <body>
     <?php if (getenv('APP_ENV') === 'development'): ?>

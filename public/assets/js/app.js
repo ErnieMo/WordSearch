@@ -33,6 +33,8 @@
     function applyUserDefaults() {
         const defaultTheme = localStorage.getItem('userDefaultTheme');
         const defaultLevel = localStorage.getItem('userDefaultLevel');
+        const defaultDiagonals = localStorage.getItem('userDefaultDiagonals');
+        const defaultReverse = localStorage.getItem('userDefaultReverse');
 
         if (defaultTheme) {
             // Pre-select the theme
@@ -45,6 +47,16 @@
             // Pre-select the difficulty level
             $(`input[name="difficulty"][value="${defaultLevel}"]`).prop('checked', true);
         }
+
+        if (defaultDiagonals !== null) {
+            // Set diagonal words preference
+            $('#diagonalsEnabled').prop('checked', defaultDiagonals === 'true');
+        }
+
+        if (defaultReverse !== null) {
+            // Set reverse words preference
+            $('#reverseEnabled').prop('checked', defaultReverse === 'true');
+        }
     }
 
     // Handle play link click - use user defaults if available
@@ -53,6 +65,8 @@
 
         const defaultTheme = localStorage.getItem('userDefaultTheme') || 'animals';
         const defaultLevel = localStorage.getItem('userDefaultLevel') || 'medium';
+        const defaultDiagonals = localStorage.getItem('userDefaultDiagonals');
+        const defaultReverse = localStorage.getItem('userDefaultReverse');
 
         // Set the defaults if not already set
         if (!selectedTheme) {
@@ -62,6 +76,14 @@
 
         if (!$('input[name="difficulty"]:checked').length) {
             $(`input[name="difficulty"][value="${defaultLevel}"]`).prop('checked', true);
+        }
+
+        if (defaultDiagonals !== null && !$('#diagonalsEnabled').is(':checked')) {
+            $('#diagonalsEnabled').prop('checked', defaultDiagonals === 'true');
+        }
+
+        if (defaultReverse !== null && !$('#reverseEnabled').is(':checked')) {
+            $('#reverseEnabled').prop('checked', defaultReverse === 'true');
         }
 
         // Start the game with current selection
@@ -117,6 +139,8 @@
                     // Store user defaults
                     localStorage.setItem('userDefaultTheme', response.default_theme || 'animals');
                     localStorage.setItem('userDefaultLevel', response.default_level || 'medium');
+                    localStorage.setItem('userDefaultDiagonals', response.default_diagonals !== false);
+                    localStorage.setItem('userDefaultReverse', response.default_reverse !== false);
 
                     updateAuthUI();
                     $('#loginModal').modal('hide');
@@ -396,6 +420,8 @@
 
                 if (response.success) {
                     currentGame = response.puzzle;
+                    // Store game ID for tracking
+                    localStorage.setItem('currentGameId', response.game_id);
                     // Redirect to play page with puzzle ID
                     window.location.href = `/play?id=${response.id}`;
                 } else {

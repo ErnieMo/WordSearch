@@ -18,7 +18,7 @@ if (empty($puzzleId)) {
             <!-- Game Grid -->
             <div class="card">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Word Search Grid</h5>
+                    <h5 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Word Search Grid (<span id="gridSize">Loading...</span>)</h5>
                 </div>
                 <div class="card-body text-center">
                     <div id="gameGrid" class="mb-3">

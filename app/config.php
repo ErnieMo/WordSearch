@@ -10,8 +10,8 @@ return [
             'diagonal_down' => [1, 1],
             'diagonal_up' => [-1, 1]
         ],
-        'maxWordLen' => 15,
-        'alphabet' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        'maxWordLen' => 12, // Maximum word length (60% rule is now enforced in PuzzleGenerator)
+        'alphabet' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
         'difficulties' => [
             'easy' => ['size' => 10, 'diagonals' => false, 'reverse' => false],
             'medium' => ['size' => 15, 'diagonals' => true, 'reverse' => false],

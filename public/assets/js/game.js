@@ -35,10 +35,14 @@
             method: 'GET',
             success: function (response) {
                 if (response.success) {
+                    console.log('Puzzle response:', response);
                     gameState.puzzle = response.puzzle;
                     gameState.grid = response.puzzle.grid;
                     gameState.words = response.puzzle.words;
                     gameState.placedWords = response.puzzle.placed_words || [];
+
+                    console.log('Game state after loading:', gameState);
+                    console.log('Placed words loaded:', gameState.placedWords);
 
                     renderGame();
                     startTimer();
@@ -59,8 +63,21 @@
         renderWordList();
         updateProgress();
 
+        // Update grid size display
+        updateGridSize();
+
         // Verify all words are in the grid and highlight them
         verifyAllWords();
+    }
+
+    // Update the grid size display in the title
+    function updateGridSize() {
+        if (gameState.grid && gameState.grid.length > 0) {
+            const gridSize = gameState.grid.length;
+            $('#gridSize').text(`${gridSize} × ${gridSize}`);
+        } else {
+            $('#gridSize').text('Loading...');
+        }
     }
 
     // Render the word search grid
@@ -79,7 +96,11 @@
         for (let r = 0; r < gameState.grid.length; r++) {
             const row = $('<tr></tr>');
             for (let c = 0; c < gameState.grid[r].length; c++) {
-                const cell = $(`<td data-r="${r}" data-c="${c}">${gameState.grid[r][c]}</td>`);
+                const cellContent = gameState.grid[r][c] === ' ' ? '&nbsp;' : gameState.grid[r][c];
+                const cell = $(`<td data-r="${r}" data-c="${c}">${cellContent}</td>`);
+                if (gameState.grid[r][c] === ' ') {
+                    cell.addClass('space-cell');
+                }
                 row.append(cell);
             }
             tbody.append(row);
@@ -99,6 +120,34 @@
             setTimeout(() => {
                 $(this).removeClass('test-highlight');
             }, 500);
+        });
+
+        // Auto-highlight words in development mode
+        if (window.APP_ENV === 'development') {
+            highlightAllPlacedWords();
+        }
+    }
+
+    // Highlight all placed words in development mode
+    function highlightAllPlacedWords() {
+        if (!gameState.placedWords || gameState.placedWords.length === 0) {
+            console.log('No placed words to highlight');
+            return;
+        }
+
+        console.log('Development mode: Highlighting all placed words with light yellow');
+
+        gameState.placedWords.forEach(placedWord => {
+            const cells = getCellsInLine(placedWord.start, placedWord.end, placedWord.direction);
+            if (cells && cells.length > 0) {
+                cells.forEach(cell => {
+                    const $cell = $(`.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`);
+                    if ($cell.length > 0) {
+                        $cell.addClass('dev-highlight');
+                        console.log(`Highlighted cell [${cell.r}, ${cell.c}] for word "${placedWord.word}"`);
+                    }
+                });
+            }
         });
     }
 
@@ -362,20 +411,27 @@
     // Get cells in a straight line between two points
     function getCellsInLine(start, end) {
         const cells = [];
-        const dr = end.r - start.r;
-        const dc = end.c - start.c;
+
+        // Handle both object format {r, c} and array format [r, c]
+        const startR = Array.isArray(start) ? start[0] : start.r;
+        const startC = Array.isArray(start) ? start[1] : start.c;
+        const endR = Array.isArray(end) ? end[0] : end.r;
+        const endC = Array.isArray(end) ? end[1] : end.c;
+
+        const dr = endR - startR;
+        const dc = endC - startC;
 
         if (dr === 0) {
             // Horizontal line
             const step = dc > 0 ? 1 : -1;
-            for (let c = start.c; c !== end.c + step; c += step) {
-                cells.push({ r: start.r, c: c });
+            for (let c = startC; c !== endC + step; c += step) {
+                cells.push({ r: startR, c: c });
             }
         } else if (dc === 0) {
             // Vertical line
             const step = dr > 0 ? 1 : -1;
-            for (let r = start.r; r !== end.r + step; r += step) {
-                cells.push({ r: r, c: start.c });
+            for (let r = startR; r !== endR + step; r += step) {
+                cells.push({ r: r, c: startC });
             }
         } else if (Math.abs(dr) === Math.abs(dc)) {
             // Diagonal line
@@ -383,8 +439,8 @@
             const stepC = dc > 0 ? 1 : -1;
             for (let i = 0; i <= Math.abs(dr); i++) {
                 cells.push({
-                    r: start.r + (i * stepR),
-                    c: start.c + (i * stepC)
+                    r: startR + (i * stepR),
+                    c: startC + (i * stepC)
                 });
             }
         }
@@ -569,16 +625,32 @@
 
     // Show solution
     function showSolution() {
-        // Highlight all placed words
-        gameState.placedWords.forEach(placedWord => {
-            const start = placedWord.start;
-            const end = placedWord.end;
-            const cells = getCellsInLine(start, end);
+        console.log('Showing solution...');
+        console.log('Placed words:', gameState.placedWords);
+        console.log('Game state:', gameState);
 
-            cells.forEach(cell => {
-                $(`.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`).addClass('found');
+        // Highlight all placed words
+        if (gameState.placedWords && gameState.placedWords.length > 0) {
+            gameState.placedWords.forEach(placedWord => {
+                console.log('Processing placed word:', placedWord);
+                console.log('Start coordinates:', placedWord.start, 'Type:', typeof placedWord.start);
+                console.log('End coordinates:', placedWord.end, 'Type:', typeof placedWord.end);
+
+                const start = placedWord.start;
+                const end = placedWord.end;
+                const cells = getCellsInLine(start, end);
+                console.log('Cells in line:', cells);
+
+                cells.forEach(cell => {
+                    const selector = `.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`;
+                    const element = $(selector);
+                    console.log('Adding found class to:', selector, element.length > 0 ? 'found' : 'not found');
+                    element.addClass('found');
+                });
             });
-        });
+        } else {
+            console.log('No placed words found in gameState');
+        }
 
         // Mark all words as found
         gameState.foundWords = [...gameState.words];

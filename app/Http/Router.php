@@ -7,7 +7,7 @@ namespace App\Http;
 use App\Services\AuthService;
 use App\Services\PuzzleGenerator;
 use App\Services\ThemeService;
-use App\Services\PuzzleStore;
+use App\Services\GameService;
 use App\Services\DatabaseService;
 
 class Router
@@ -16,7 +16,7 @@ class Router
     private AuthService $authService;
     private PuzzleGenerator $puzzleGenerator;
     private ThemeService $themeService;
-    private PuzzleStore $puzzleStore;
+    private GameService $gameService;
     private DatabaseService $dbService;
 
     public function __construct()
@@ -25,7 +25,7 @@ class Router
         $this->authService = new AuthService($this->dbService);
         $this->puzzleGenerator = new PuzzleGenerator();
         $this->themeService = new ThemeService();
-        $this->puzzleStore = new PuzzleStore();
+        $this->gameService = new GameService($this->dbService);
         
         $this->registerRoutes();
     }
@@ -151,14 +151,19 @@ class Router
     {
         $data = $this->getRequestData();
         
+        // Log the received login data
+        error_log("Login request received - data: " . json_encode($data));
+        
         try {
             $result = $this->authService->login(
                 $data['username'] ?? '',
                 $data['password'] ?? ''
             );
             
+            error_log("Login successful for user: " . ($data['username'] ?? 'unknown'));
             $this->sendJsonResponse($result);
         } catch (\Exception $e) {
+            error_log("Login failed with error: " . $e->getMessage());
             $this->sendErrorResponse($e->getMessage(), 400);
         }
     }
@@ -245,29 +250,45 @@ class Router
         }
         
         try {
-            // Determine word count based on difficulty
+            // Determine grid size and word count based on difficulty
             $difficulty = $options['difficulty'] ?? 'medium';
-            $wordCount = $difficulty === 'easy' ? 10 : 15;
+            $gridSize = $difficulty === 'easy' ? 10 : ($difficulty === 'medium' ? 15 : 20);
+            $wordCount = $gridSize; // Grid size always equals word count
             
-            // Get random words from the theme service
-            $words = $this->themeService->getRandomWords($themeId, $wordCount);
+            // Get ALL words from the theme service (we'll filter and randomize in the puzzle generator)
+            $words = $this->themeService->getThemeWords($themeId);
             
             if (empty($words)) {
                 $this->sendErrorResponse('No words available for this theme', 400);
                 return;
             }
             
-            // Add word_count to options for the puzzle generator
+            // Add grid size and word count to options for the puzzle generator
+            $options['size'] = $gridSize;
             $options['word_count'] = $wordCount;
             $puzzle = $this->puzzleGenerator->generatePuzzle($words, $options);
             
-            // Save puzzle to storage
-            $puzzleId = $this->puzzleStore->savePuzzle($puzzle);
-            $puzzle['id'] = $puzzleId;
+            // Debug logging
+            error_log("Puzzle generated - Grid size: {$gridSize}, Target words: {$wordCount}, Actual words: " . count($puzzle['words']));
+            
+            // Create game record in database
+            $user = $this->getAuthenticatedUser();
+            $gameData = [
+                'user_id' => $user['user_id'] ?? null,
+                'puzzle_id' => $puzzle['id'],
+                'theme' => $themeId,
+                'difficulty' => $difficulty,
+                'grid_size' => $gridSize,
+                'total_words' => count($puzzle['words']), // Use actual word count from puzzle
+                'puzzle_data' => $puzzle // Store complete puzzle data as JSON
+            ];
+            
+            $gameId = $this->gameService->createGame($gameData);
             
             $this->sendJsonResponse([
                 'success' => true,
-                'id' => $puzzleId,
+                'id' => $puzzle['id'],
+                'game_id' => $gameId,
                 'puzzle' => $puzzle,
                 'message' => 'Puzzle generated successfully'
             ]);
@@ -279,16 +300,17 @@ class Router
     public function handleGetPuzzle(string $id): void
     {
         try {
-            $puzzle = $this->puzzleStore->getPuzzle($id);
+            $game = $this->gameService->getGameByPuzzleId($id);
             
-            if (!$puzzle) {
+            if (!$game) {
                 $this->sendErrorResponse('Puzzle not found', 404);
                 return;
             }
             
+            // Return the puzzle data from the game record
             $this->sendJsonResponse([
                 'success' => true,
-                'puzzle' => $puzzle
+                'puzzle' => $game['puzzle_data']
             ]);
         } catch (\Exception $e) {
             $this->sendErrorResponse($e->getMessage(), 500);
@@ -406,7 +428,12 @@ class Router
     private function getRequestData(): array
     {
         $input = file_get_contents('php://input');
-        return json_decode($input, true) ?? [];
+        error_log("Raw request input: " . $input);
+        
+        $decoded = json_decode($input, true);
+        error_log("Decoded request data: " . json_encode($decoded));
+        
+        return $decoded ?? [];
     }
 
     private function getAuthToken(): ?string

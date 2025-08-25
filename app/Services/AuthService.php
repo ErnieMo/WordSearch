@@ -62,11 +62,21 @@ class AuthService
 
     public function login(string $usernameOrEmail, string $password): array
     {
+        // Log the search parameters
+        error_log("Login attempt - searching for user with: usernameOrEmail = '{$usernameOrEmail}'");
+        
         // Find user by username OR email
         $user = $this->db->fetchOne(
             "SELECT id, username, password, first_name, last_name, default_theme, default_level FROM users WHERE (username = :username OR email = :email) AND is_active = true",
             ['username' => $usernameOrEmail, 'email' => $usernameOrEmail]
         );
+        
+        // Log the search result
+        if ($user) {
+            error_log("User found: ID={$user['id']}, username={$user['username']}, has_default_theme=" . ($user['default_theme'] ?? 'NULL') . ", has_default_level=" . ($user['default_level'] ?? 'NULL'));
+        } else {
+            error_log("No user found with usernameOrEmail = '{$usernameOrEmail}'");
+        }
 
         if (!$user || !password_verify($password, $user['password'])) {
             throw new \InvalidArgumentException('Invalid username/email or password');
@@ -75,17 +85,19 @@ class AuthService
         // Generate JWT token
         $token = $this->generateJWT($user['id'], $user['username']);
 
-        return [
-            'success' => true,
-            'user_id' => $user['id'],
-            'username' => $user['username'],
-            'first_name' => $user['first_name'],
-            'last_name' => $user['last_name'],
-            'default_theme' => $user['default_theme'] ?? 'animals',
-            'default_level' => $user['default_level'] ?? 'medium',
-            'token' => $token,
-            'message' => 'Login successful'
-        ];
+                        return [
+                    'success' => true,
+                    'user_id' => $user['id'],
+                    'username' => $user['username'],
+                    'first_name' => $user['first_name'],
+                    'last_name' => $user['last_name'],
+                    'default_theme' => $user['default_theme'] ?? 'animals',
+                    'default_level' => $user['default_level'] ?? 'medium',
+                    'default_diagonals' => $user['default_diagonals'] ?? true,
+                    'default_reverse' => $user['default_reverse'] ?? true,
+                    'token' => $token,
+                    'message' => 'Login successful'
+                ];
     }
 
     public function validateToken(string $token): ?array
@@ -120,7 +132,7 @@ class AuthService
 
     public function updateProfile(int $userId, array $data): array
     {
-        $allowedFields = ['first_name', 'last_name', 'email'];
+        $allowedFields = ['first_name', 'last_name', 'email', 'default_theme', 'default_level', 'default_diagonals', 'default_reverse'];
         $updateData = [];
 
         foreach ($allowedFields as $field) {
@@ -173,7 +185,7 @@ class AuthService
     public function getUserProfile(int $userId): ?array
     {
         return $this->db->fetchOne(
-            "SELECT id, username, email, first_name, last_name, created_at FROM users WHERE id = :id AND is_active = true",
+            "SELECT id, username, email, first_name, last_name, default_theme, default_level, default_diagonals, default_reverse, created_at FROM users WHERE id = :id AND is_active = true",
             ['id' => $userId]
         );
     }
