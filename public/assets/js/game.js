@@ -557,6 +557,39 @@
         $('#wordsFound').text(found);
         $('#totalWords').text(total);
         $('#progressBar').css('width', percentage + '%');
+
+        // Update progress in backend if user is logged in
+        if (window.serverAuthState && window.serverAuthState.isLoggedIn && window.puzzleId) {
+            updateProgressInBackend(found, total);
+        }
+    }
+
+    // Update progress in backend
+    function updateProgressInBackend(wordsFound, totalWords) {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        $.ajax({
+            url: '/api/progress',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            data: JSON.stringify({
+                puzzle_id: window.puzzleId,
+                words_found: wordsFound,
+                total_words: totalWords
+            }),
+            success: function (response) {
+                if (response.success) {
+                    console.log('Progress updated in backend:', response.progress);
+                }
+            },
+            error: function (xhr) {
+                console.error('Failed to update progress:', xhr.responseText);
+            }
+        });
     }
 
     // Start the game timer

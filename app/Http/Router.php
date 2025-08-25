@@ -45,6 +45,7 @@ class Router
         $this->addRoute('POST', '/api/generate', [$this, 'handleGeneratePuzzle']);
         $this->addRoute('GET', '/api/puzzle/{id}', [$this, 'handleGetPuzzle']);
         $this->addRoute('POST', '/api/validate', [$this, 'handleValidateWord']);
+        $this->addRoute('POST', '/api/progress', [$this, 'handleUpdateProgress']);
         $this->addRoute('GET', '/api/themes', [$this, 'handleGetThemes']);
 
         // Score routes
@@ -53,12 +54,16 @@ class Router
         $this->addRoute('GET', '/api/scores/stats', [$this, 'handleGetScoreStats']);
         $this->addRoute('GET', '/api/scores/my/stats', [$this, 'handleGetMyScoreStats']);
         $this->addRoute('POST', '/api/scores/save', [$this, 'handleSaveScore']);
+        
+        // History routes
+        $this->addRoute('GET', '/api/history', [$this, 'handleGetHistory']);
 
         // Page routes
         $this->addRoute('GET', '/', [$this, 'handleHomePage']);
         $this->addRoute('GET', '/play', [$this, 'handlePlayPage']);
         $this->addRoute('GET', '/create', [$this, 'handleCreatePage']);
         $this->addRoute('GET', '/scores', [$this, 'handleScoresPage']);
+        $this->addRoute('GET', '/history', [$this, 'handleHistoryPage']);
         $this->addRoute('GET', '/profile', [$this, 'handleProfilePage']);
     }
 
@@ -358,6 +363,53 @@ class Router
             ]);
         } catch (\Exception $e) {
             $this->sendErrorResponse($e->getMessage(), 500);
+        }
+    }
+
+    public function handleUpdateProgress(): void
+    {
+        $data = $this->getRequestData();
+        $puzzleId = $data['puzzle_id'] ?? null;
+        $wordsFound = $data['words_found'] ?? 0;
+        $totalWords = $data['total_words'] ?? 0;
+        
+        if (!$puzzleId) {
+            $this->sendErrorResponse('Missing puzzle ID', 400);
+            return;
+        }
+        
+        try {
+            // Get authenticated user
+            $user = $this->getAuthenticatedUser();
+            if (!$user) {
+                $this->sendErrorResponse('Authentication required', 401);
+                return;
+            }
+            
+            // Update the game record with current progress
+            $updateData = [
+                'words_found' => $wordsFound,
+                'total_words' => $totalWords
+            ];
+            
+            $result = $this->gameService->updateGame($puzzleId, $updateData);
+            
+            if ($result) {
+                $this->sendJsonResponse([
+                    'success' => true,
+                    'message' => 'Progress updated successfully',
+                    'progress' => [
+                        'words_found' => $wordsFound,
+                        'total_words' => $totalWords
+                    ]
+                ]);
+            } else {
+                $this->sendErrorResponse('Failed to update progress', 500);
+            }
+            
+        } catch (\Exception $e) {
+            error_log("Error updating progress: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to update progress', 500);
         }
     }
 
@@ -662,6 +714,54 @@ class Router
         }
     }
 
+    // History handlers
+    public function handleGetHistory(): void
+    {
+        try {
+            $user = $this->getAuthenticatedUser();
+            if (!$user) {
+                $this->sendErrorResponse('Authentication required', 401);
+                return;
+            }
+            
+            // Get all games for the user (completed, active, abandoned)
+            $historySql = "
+                SELECT 
+                    g.id,
+                    g.puzzle_id,
+                    g.theme,
+                    g.difficulty,
+                    g.status,
+                    g.words_found,
+                    g.total_words,
+                    g.completion_time,
+                    g.hints_used,
+                    g.created_at,
+                    g.end_time,
+                    g.completed_at
+                FROM games g
+                WHERE g.user_id = :user_id
+                ORDER BY g.created_at DESC
+                LIMIT 100
+            ";
+            
+            $historyStmt = $this->dbService->query($historySql, ['user_id' => $user['user_id']]);
+            $games = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Debug logging
+            error_log("History query executed for user " . $user['user_id'] . ": Found " . count($games) . " games");
+            
+            $this->sendJsonResponse([
+                'success' => true,
+                'games' => $games
+            ]);
+            
+        } catch (\Exception $e) {
+            error_log("Error fetching game history: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to fetch game history', 500);
+        }
+    }
+
     // Page handlers
     public function handleHomePage(): void
     {
@@ -683,6 +783,11 @@ class Router
     public function handleScoresPage(): void
     {
         $this->renderPage('scores');
+    }
+
+    public function handleHistoryPage(): void
+    {
+        $this->renderPage('history');
     }
 
     public function handleProfilePage(): void

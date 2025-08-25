@@ -61,6 +61,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/scores"><i class="bi bi-trophy me-1"></i>Scores</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history"><i class="bi bi-clock-history me-1"></i>History</a>
+                    </li>
                 </ul>
                 
                 <ul class="navbar-nav" id="authNav">
