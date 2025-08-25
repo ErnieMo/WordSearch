@@ -51,6 +51,7 @@ class Router
         $this->addRoute('GET', '/api/scores/my', [$this, 'handleGetMyScores']);
         $this->addRoute('GET', '/api/scores/stats', [$this, 'handleGetScoreStats']);
         $this->addRoute('GET', '/api/scores/my/stats', [$this, 'handleGetMyScoreStats']);
+        $this->addRoute('POST', '/api/scores/save', [$this, 'handleSaveScore']);
 
         // Page routes
         $this->addRoute('GET', '/', [$this, 'handleHomePage']);
@@ -242,12 +243,15 @@ class Router
     {
         $data = $this->getRequestData();
         $themeId = $data['theme_id'] ?? '';
-        $options = $data['options'] ?? [];
+        $options = $data['options'] ?? '';
         
         if (empty($themeId)) {
             $this->sendErrorResponse('No theme ID provided', 400);
             return;
         }
+        
+        // Check if user is authenticated (optional - guest users can play)
+        $user = $this->getAuthenticatedUser();
         
         try {
             // Determine grid size and word count based on difficulty
@@ -271,10 +275,9 @@ class Router
             // Debug logging
             error_log("Puzzle generated - Grid size: {$gridSize}, Target words: {$wordCount}, Actual words: " . count($puzzle['words']));
             
-            // Create game record in database
-            $user = $this->getAuthenticatedUser();
+            // Create game record in database (user_id may be null for guest users)
             $gameData = [
-                'user_id' => $user['user_id'] ?? null,
+                'user_id' => $user['user_id'] ?? null, // May be null for guest users
                 'puzzle_id' => $puzzle['id'],
                 'theme' => $themeId,
                 'difficulty' => $difficulty,
@@ -284,6 +287,15 @@ class Router
             ];
             
             $gameId = $this->gameService->createGame($gameData);
+            
+            // Save guest user preferences for future visits
+            if (!$user) {
+                $_SESSION['guest_last_theme'] = $themeId;
+                $_SESSION['guest_last_difficulty'] = $difficulty;
+                $_SESSION['guest_last_diagonals'] = $options['diagonals'] ?? true;
+                $_SESSION['guest_last_reverse'] = $options['reverse'] ?? false;
+                error_log("Saved guest preferences - Theme: $themeId, Difficulty: $difficulty");
+            }
             
             $this->sendJsonResponse([
                 'success' => true,
@@ -361,47 +373,276 @@ class Router
         }
     }
 
-    // Score handlers (placeholder implementations)
+    // Score handlers
     public function handleGetScores(): void
     {
-        $this->sendJsonResponse([
-            'success' => true,
-            'scores' => [],
-            'message' => 'Score system not yet implemented'
-        ]);
+        try {
+            // Get query parameters for filtering
+            $theme = $_GET['theme'] ?? '';
+            $difficulty = $_GET['difficulty'] ?? '';
+            $timeRange = $_GET['timeRange'] ?? 'all';
+            $page = max(1, intval($_GET['page'] ?? 1));
+            $perPage = 20;
+            $offset = ($page - 1) * $perPage;
+            
+            // Build the base query for completed games
+            $whereConditions = ["g.status = 'completed'"];
+            $params = [];
+            
+            if ($theme) {
+                $whereConditions[] = "g.theme = :theme";
+                $params['theme'] = $theme;
+            }
+            
+            if ($difficulty) {
+                $whereConditions[] = "g.difficulty = :difficulty";
+                $params['difficulty'] = $difficulty;
+            }
+            
+            // Add time range filtering
+            switch ($timeRange) {
+                case 'today':
+                    $whereConditions[] = "DATE(g.end_time) = CURRENT_DATE";
+                    break;
+                case 'week':
+                    $whereConditions[] = "g.end_time >= CURRENT_DATE - INTERVAL '7 days'";
+                    break;
+                case 'month':
+                    $whereConditions[] = "g.end_time >= CURRENT_DATE - INTERVAL '30 days'";
+                    break;
+            }
+            
+            $whereClause = implode(' AND ', $whereConditions);
+            
+            // Get total count for pagination
+            $countSql = "SELECT COUNT(*) FROM games g WHERE $whereClause";
+            $countStmt = $this->db->query($countSql, $params);
+            $totalScores = $countStmt->fetchColumn();
+            
+            // Get scores with user information
+            $scoresSql = "
+                SELECT 
+                    g.id,
+                    g.puzzle_id,
+                    g.theme,
+                    g.difficulty,
+                    g.elapsed_time,
+                    g.hints_used,
+                    g.words_found,
+                    g.total_words,
+                    g.end_time as created_at,
+                    COALESCE(u.username, 'Guest') as username
+                FROM games g
+                LEFT JOIN users u ON g.user_id = u.id
+                WHERE $whereClause
+                ORDER BY g.elapsed_time ASC, g.hints_used ASC, g.end_time DESC
+                LIMIT $perPage OFFSET $offset
+            ";
+            
+            $scoresStmt = $this->db->query($scoresSql, $params);
+            $scores = $scoresStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Calculate pagination info
+            $totalPages = ceil($totalScores / $perPage);
+            
+            $this->sendJsonResponse([
+                'success' => true,
+                'scores' => $scores,
+                'pagination' => [
+                    'current_page' => $page,
+                    'total_pages' => $totalPages,
+                    'total_scores' => $totalScores,
+                    'per_page' => $perPage
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            error_log("Error fetching scores: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to fetch scores', 500);
+        }
     }
 
     public function handleGetMyScores(): void
     {
-        $this->sendJsonResponse([
-            'success' => true,
-            'scores' => [],
-            'message' => 'Score system not yet implemented'
-        ]);
+        try {
+            $user = $this->getAuthenticatedUser();
+            if (!$user) {
+                $this->sendErrorResponse('Authentication required', 401);
+                return;
+            }
+            
+            // Get user's completed games
+            $scoresSql = "
+                SELECT 
+                    g.id,
+                    g.puzzle_id,
+                    g.theme,
+                    g.difficulty,
+                    g.elapsed_time,
+                    g.hints_used,
+                    g.words_found,
+                    g.total_words,
+                    g.end_time as created_at
+                FROM games g
+                WHERE g.user_id = :user_id AND g.status = 'completed'
+                ORDER BY g.end_time DESC
+                LIMIT 50
+            ";
+            
+            $scoresStmt = $this->db->query($scoresSql, ['user_id' => $user['user_id']]);
+            $scores = $scoresStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->sendJsonResponse([
+                'success' => true,
+                'scores' => $scores
+            ]);
+            
+        } catch (\Exception $e) {
+            error_log("Error fetching user scores: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to fetch user scores', 500);
+        }
     }
 
     public function handleGetScoreStats(): void
     {
-        $this->sendJsonResponse([
-            'success' => true,
-            'stats' => [],
-            'message' => 'Score system not yet implemented'
-        ]);
+        try {
+            // Get overall game statistics
+            $statsSql = "
+                SELECT 
+                    COUNT(*) as total_games,
+                    COUNT(DISTINCT g.user_id) as total_players,
+                    AVG(g.elapsed_time) as avg_time,
+                    MIN(g.elapsed_time) as best_time,
+                    AVG(g.hints_used) as avg_hints
+                FROM games g
+                WHERE g.status = 'completed'
+            ";
+            
+            $statsStmt = $this->db->query($statsSql);
+            $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Get theme popularity
+            $themeSql = "
+                SELECT 
+                    theme,
+                    COUNT(*) as game_count
+                FROM games
+                WHERE status = 'completed'
+                GROUP BY theme
+                ORDER BY game_count DESC
+            ";
+            
+            $themeStmt = $this->db->query($themeSql);
+            $themeStats = $themeStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->sendJsonResponse([
+                'success' => true,
+                'stats' => [
+                    'total_games' => intval($stats['total_games']),
+                    'total_players' => intval($stats['total_players']),
+                    'avg_time' => round(floatval($stats['avg_time']), 1),
+                    'best_time' => intval($stats['best_time']),
+                    'avg_hints' => round(floatval($stats['avg_hints']), 1),
+                    'theme_popularity' => $themeStats
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            error_log("Error fetching score stats: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to fetch score statistics', 500);
+        }
     }
 
     public function handleGetMyScoreStats(): void
     {
-        $this->sendJsonResponse([
-            'success' => true,
-            'stats' => [],
-            'message' => 'Score system not yet implemented'
-        ]);
+        try {
+            $user = $this->getAuthenticatedUser();
+            if (!$user) {
+                $this->sendErrorResponse('Authentication required', 401);
+                return;
+            }
+            
+            // Get user's comprehensive game statistics
+            $statsSql = "
+                SELECT 
+                    COUNT(*) as total_games,
+                    AVG(CASE WHEN g.elapsed_time > 0 THEN g.elapsed_time END) as avg_time,
+                    SUM(g.hints_used) as total_hints,
+                    COUNT(CASE WHEN g.status = 'completed' THEN 1 END) as completed_games
+                FROM games g
+                WHERE g.user_id = :user_id
+            ";
+            
+            $statsStmt = $this->db->query($statsSql, ['user_id' => $user['user_id']]);
+            $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Get best times for each difficulty
+            $bestTimesSql = "
+                SELECT 
+                    difficulty,
+                    MIN(elapsed_time) as best_time
+                FROM games
+                WHERE user_id = :user_id AND status = 'completed'
+                GROUP BY difficulty
+            ";
+            
+            $bestTimesStmt = $this->db->query($bestTimesSql, ['user_id' => $user['user_id']]);
+            $bestTimes = $bestTimesStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Organize best times by difficulty
+            $bestTimeEasy = null;
+            $bestTimeMedium = null;
+            $bestTimeHard = null;
+            $bestTimeExpert = null;
+            
+            foreach ($bestTimes as $time) {
+                switch ($time['difficulty']) {
+                    case 'easy':
+                        $bestTimeEasy = intval($time['best_time']);
+                        break;
+                    case 'medium':
+                        $bestTimeMedium = intval($time['best_time']);
+                        break;
+                    case 'hard':
+                        $bestTimeHard = intval($time['best_time']);
+                        break;
+                    case 'expert':
+                        $bestTimeExpert = intval($time['best_time']);
+                        break;
+                }
+            }
+            
+            // Calculate success rate
+            $totalGames = intval($stats['total_games']);
+            $completedGames = intval($stats['completed_games']);
+            $successRate = $totalGames > 0 ? round(($completedGames / $totalGames) * 100) : 0;
+            
+            $this->sendJsonResponse([
+                'success' => true,
+                'stats' => [
+                    'total_games' => $totalGames,
+                    'avg_time' => round(floatval($stats['avg_time']), 1),
+                    'total_hints' => intval($stats['total_hints']),
+                    'success_rate' => $successRate,
+                    'best_time_easy' => $bestTimeEasy,
+                    'best_time_medium' => $bestTimeMedium,
+                    'best_time_hard' => $bestTimeHard,
+                    'best_time_expert' => $bestTimeExpert
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            error_log("Error fetching user stats: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to fetch user statistics', 500);
+        }
     }
 
     // Page handlers
     public function handleHomePage(): void
     {
-        $this->renderPage('home');
+        // Get user preferences for smart defaults
+        $userPrefs = $this->getUserPreferencesForHome();
+        $this->renderPage('home', $userPrefs);
     }
 
     public function handlePlayPage(): void
@@ -450,6 +691,13 @@ class Router
 
     private function getAuthenticatedUser(): ?array
     {
+        // First try to get user from session (no database call)
+        $user = $this->authService->getCurrentUser();
+        if ($user) {
+            return $user;
+        }
+        
+        // If no session, try JWT token
         $token = $this->getAuthToken();
         if (!$token) {
             return null;
@@ -473,14 +721,104 @@ class Router
         ], $statusCode);
     }
 
-    private function renderPage(string $pageName): void
+    private function getUserPreferencesForHome(): array
+    {
+        $defaults = [
+            'theme' => 'animals',
+            'difficulty' => 'medium',
+            'diagonals' => true,
+            'reverse' => false
+        ];
+        
+        // Try to get user from session first
+        $user = $this->authService->getCurrentUser();
+        if ($user) {
+            // User is logged in - get preferences from session
+            $defaults['theme'] = $_SESSION['default_theme'] ?? 'animals';
+            $defaults['difficulty'] = $_SESSION['default_level'] ?? 'medium';
+            $defaults['diagonals'] = $_SESSION['default_diagonals'] ?? true;
+            $defaults['reverse'] = $_SESSION['default_reverse'] ?? false;
+            error_log("Using logged-in user preferences - Theme: {$defaults['theme']}, Difficulty: {$defaults['difficulty']}");
+        } else {
+            // Check for guest user preferences in session
+            $defaults['theme'] = $_SESSION['guest_last_theme'] ?? 'animals';
+            $defaults['difficulty'] = $_SESSION['guest_last_difficulty'] ?? 'medium';
+            $defaults['diagonals'] = $_SESSION['guest_last_diagonals'] ?? true;
+            $defaults['reverse'] = $_SESSION['guest_last_reverse'] ?? false;
+            error_log("Using guest user preferences - Theme: {$defaults['theme']}, Difficulty: {$defaults['difficulty']}");
+        }
+        
+        return $defaults;
+    }
+
+    private function renderPage(string $pageName, array $data = []): void
     {
         $pageFile = __DIR__ . '/../../public/views/' . $pageName . '.php';
         
         if (file_exists($pageFile)) {
+            // Extract data to variables for the view
+            extract($data);
             include $pageFile;
         } else {
             $this->sendErrorResponse('Page not found', 404);
+        }
+    }
+
+    // Score saving handler
+    public function handleSaveScore(): void
+    {
+        $data = $this->getRequestData();
+        $gameId = $data['game_id'] ?? null;
+        $completionTime = $data['completion_time'] ?? null;
+        $hintsUsed = $data['hints_used'] ?? 0;
+        
+        if (!$gameId || !$completionTime) {
+            $this->sendErrorResponse('Missing required data: game_id and completion_time', 400);
+            return;
+        }
+
+        try {
+            // Get authenticated user
+            $user = $this->getAuthenticatedUser();
+            if (!$user) {
+                $this->sendErrorResponse('Authentication required to save score', 401);
+                return;
+            }
+
+            error_log("=== SAVE SCORE DEBUG ===");
+            error_log("User authenticated: " . json_encode($user));
+            error_log("Game ID: " . $gameId);
+
+            // Update the game record with completion data and user ID
+            $updateData = [
+                'user_id' => $user['user_id'],
+                'completion_time' => $completionTime,
+                'hints_used' => $hintsUsed,
+                'completed_at' => date('Y-m-d H:i:s'),
+                'status' => 'completed'
+            ];
+
+            error_log("About to call updateGame with: " . json_encode($updateData));
+            
+            $result = $this->gameService->updateGame($gameId, $updateData);
+            
+            error_log("updateGame result: " . ($result ? 'true' : 'false'));
+
+            $this->sendJsonResponse([
+                'success' => true,
+                'message' => 'Score saved successfully',
+                'score' => [
+                    'completion_time' => $completionTime,
+                    'hints_used' => $hintsUsed,
+                    'user_id' => $user['user_id']
+                ]
+            ]);
+            
+            error_log("Response sent successfully");
+        } catch (\Exception $e) {
+            error_log("Exception in handleSaveScore: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            $this->sendErrorResponse('Failed to save score: ' . $e->getMessage(), 500);
         }
     }
 }

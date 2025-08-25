@@ -16,6 +16,31 @@ foreach ($_ENV as $key => $value) {
     }
 }
 
+// Start session before any output or headers
+if (session_status() === PHP_SESSION_NONE) {
+    // Set session cookie parameters based on environment
+    $cookieDomain = ($_ENV['APP_ENV'] ?? 'development') === 'development' 
+        ? '.dev.nofinway.com' 
+        : '.nofinway.com';
+    
+    ini_set('session.cookie_domain', $cookieDomain);
+    ini_set('session.cookie_path', '/');
+    ini_set('session.cookie_secure', '0'); // Set to 1 if using HTTPS
+    ini_set('session.cookie_httponly', '1');
+    
+    session_start();
+    
+    // Debug session creation
+    error_log("\n=== INDEX.PHP SESSION STARTED ===");
+    error_log("\nAPP_ENV: " . ($_ENV['APP_ENV'] ?? 'development'));
+    error_log("\nCookie domain set to: " . $cookieDomain);
+    error_log("\nSession ID: " . session_id());
+    error_log("\nSession name: " . ini_get('session.name'));
+    error_log("\nCookie domain: " . ini_get('session.cookie_domain'));
+    error_log("\nCookie path: " . ini_get('session.cookie_path'));
+    error_log("\nSession data after start: " . print_r($_SESSION, true));
+}
+
 // Set error reporting for development
 if ($_ENV['APP_ENV'] ?? 'development' === 'development') {
     error_reporting(E_ALL);
@@ -45,7 +70,7 @@ try {
     $router->handleRequest($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 } catch (Exception $e) {
     // Log error
-    error_log("Application error: " . $e->getMessage());
+    error_log("\nApplication error: " . $e->getMessage());
     
     // Send error response
     http_response_code(500);

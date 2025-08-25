@@ -1,5 +1,12 @@
 <?php
 $pageTitle = 'Home - Word Search Game';
+
+// Set default values if not provided
+$theme = $theme ?? 'animals';
+$difficulty = $difficulty ?? 'medium';
+$diagonals = $diagonals ?? true;
+$reverse = $reverse ?? false;
+
 $pageContent = '
 <div class="row justify-content-center">
     <div class="col-lg-8">
@@ -32,7 +39,7 @@ $pageContent = '
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyEasy" value="easy" checked>
+                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyEasy" value="easy"' . ($difficulty === 'easy' ? ' checked' : '') . '>
                             <label class="form-check-label" for="difficultyEasy">
                                 <strong>Easy</strong><br>
                                 <small class="text-muted">10×10 grid, simple words</small>
@@ -41,7 +48,7 @@ $pageContent = '
                     </div>
                     <div class="col-md-4 mb-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyMedium" value="medium">
+                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyMedium" value="medium"' . ($difficulty === 'medium' ? ' checked' : '') . '>
                             <label class="form-check-label" for="difficultyMedium">
                                 <strong>Medium</strong><br>
                                 <small class="text-muted">15×15 grid, diagonal words</small>
@@ -50,7 +57,7 @@ $pageContent = '
                     </div>
                     <div class="col-md-4 mb-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyHard" value="hard">
+                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyHard" value="hard"' . ($difficulty === 'hard' ? ' checked' : '') . '>
                             <label class="form-check-label" for="difficultyHard">
                                 <strong>Hard</strong><br>
                                 <small class="text-muted">20×20 grid, reverse words</small>
@@ -70,7 +77,7 @@ $pageContent = '
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="diagonalsEnabled" checked>
+                            <input class="form-check-input" type="checkbox" id="diagonalsEnabled"' . ($diagonals ? ' checked' : '') . '>
                             <label class="form-check-label" for="diagonalsEnabled">
                                 <strong>Diagonal Words</strong><br>
                                 <small class="text-muted">Include diagonal word placement</small>
@@ -79,7 +86,7 @@ $pageContent = '
                     </div>
                     <div class="col-md-6 mb-3">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="reverseEnabled">
+                            <input class="form-check-input" type="checkbox" id="reverseEnabled"' . ($reverse ? ' checked' : '') . '>
                             <label class="form-check-label" for="reverseEnabled">
                                 <strong>Reverse Words</strong><br>
                                 <small class="text-muted">Some words may be backwards</small>

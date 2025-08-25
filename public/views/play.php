@@ -1,5 +1,32 @@
 <?php
+if (!isset($_SESSION)) {
+    session_start();
+}
+
 $pageTitle = 'Play Word Search - Word Search Game';
+
+// Session is already started in index.php
+// Debug session state
+error_log("\n=== PLAY.PHP SESSION DEBUG ===");
+error_log("\nSession ID: " . (session_id() ?: 'NO SESSION ID'));
+error_log("\nSession status: " . session_status());
+error_log("\nSession data: " . print_r($_SESSION, true));
+error_log("\nCookie data: " . print_r($_COOKIE, true));
+error_log("\nPHPSESSID cookie: " . ($_COOKIE['PHPSESSID'] ?? 'NOT SET'));
+error_log("\nAll cookies: " . print_r($_COOKIE, true));
+
+// Check if user is logged in via session
+
+$isLoggedIn = isset($_SESSION['user_id']) && isset($_SESSION['username']);
+$currentUsername = $_SESSION['username'] ?? '';
+
+error_log("\nisLoggedIn: " . ($isLoggedIn ? 'true' : 'false'));
+error_log("\ncurrentUsername: " . $currentUsername);
+error_log("\nSession user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+error_log("\nSession username: " . ($_SESSION['username'] ?? 'NOT SET'));
+error_log("\nisset(\$_SESSION['user_id']): " . (isset($_SESSION['user_id']) ? 'true' : 'false'));
+error_log("\nisset(\$_SESSION['username']): " . (isset($_SESSION['username']) ? 'true' : 'false'));
+error_log("\n=== END SESSION DEBUG ===");
 
 // Get puzzle ID from URL parameter
 $puzzleId = $_GET['id'] ?? '';
@@ -130,8 +157,8 @@ if (empty($puzzleId)) {
         </div>
     </div>
     
-    <!-- Game Completion Modal -->
-    <div class="modal fade" id="completionModal" tabindex="-1">
+    <!-- Game Completion Modal for Logged-in Users -->
+    <div class="modal fade" id="completionModalLoggedIn" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
@@ -145,17 +172,80 @@ if (empty($puzzleId)) {
                     <div class="row text-center">
                         <div class="col-6">
                             <h6>Time</h6>
-                            <p class="h4 text-success" id="completionTime">00:00</p>
+                            <p class="h4 text-success" id="completionTimeLoggedIn">00:00</p>
                         </div>
                         <div class="col-6">
                             <h6>Hints Used</h6>
-                            <p class="h4 text-warning" id="hintsUsed">0</p>
+                            <p class="h4 text-warning" id="hintsUsedLoggedIn">0</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Score saved confirmation -->
+                    <div class="mt-3">
+                        <div class="text-center">
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle me-2"></i>
+                                <strong>Score saved to scoreboard!</strong>
+                                <br>
+                                <small class="text-muted">Your completion time has been recorded.</small>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-success" id="playAgainBtn">Play Again</button>
+                    <button type="button" class="btn btn-success" id="playAgainBtnLoggedIn">Play Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Completion Modal for Guest Users -->
+    <div class="modal fade" id="completionModalGuest" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-trophy me-2"></i>Congratulations!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You completed the puzzle!</p>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h6>Time</h6>
+                            <p class="h4 text-success" id="completionTimeGuest">00:00</p>
+                        </div>
+                        <div class="col-6">
+                            <h6>Hints Used</h6>
+                            <p class="h4 text-warning" id="hintsUsedGuest">0</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Login to save score message -->
+                    <div class="mt-3">
+                        <div class="text-center">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Login to save your score to the scoreboard!</strong>
+                                <br>
+                                <small class="text-muted">Your score is temporarily saved and will be lost if decide not to login / register.</small>
+                            </div>
+                            <div class="d-grid gap-2 d-md-block">
+                                <button class="btn btn-primary me-md-2" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                                </button>
+                                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#registerModal">
+                                    <i class="bi bi-person-plus me-2"></i>Register
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="playAgainBtnGuest">Play Again</button>
                 </div>
             </div>
         </div>
@@ -178,6 +268,9 @@ if (empty($puzzleId)) {
                             <button class="btn btn-outline-success" id="almostCompleteBtn">
                                 <i class="bi bi-fast-forward me-2"></i>Almost Complete
                             </button>
+                            <button class="btn btn-outline-primary" id="completeBtn">
+                                <i class="bi bi-check-circle me-2"></i>Complete
+                            </button>
                         </div>
                     </div>
                 </div>',
@@ -187,10 +280,52 @@ if (empty($puzzleId)) {
 }
 
 include 'layout.php';
+
+// Add session debug information to the completion modal if in development mode
+if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
+    echo '<script>
+        // Add session debug info to the completion modal
+        $(document).ready(function() {
+            const sessionDebugHtml = `
+                <div class="mt-3">
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-bug me-2"></i>Session Debug Info</h6>
+                        <pre class="mb-0">' . print_r($_SESSION, true) . '</pre>
+                    </div>
+                </div>
+            `;
+            
+            // Insert the debug info after the scoreSavingSection
+            $("#scoreSavingSection").after(sessionDebugHtml);
+        });
+    </script>';
+}
 ?>
 
-<!-- Set puzzle ID and load game JavaScript after jQuery is available -->
+<!-- Set puzzle ID and authentication state before loading game JavaScript -->
 <script>
+    // Set authentication state from server-side session IMMEDIATELY
+    window.serverAuthState = {
+        isLoggedIn: <?= $isLoggedIn ? 'true' : 'false' ?>,
+        username: "<?= htmlspecialchars($currentUsername) ?>"
+    };
+    
+    // Set global login state immediately
+    window.isLoggedIn = <?= $isLoggedIn ? 'true' : 'false' ?>;
+    
     window.puzzleId = "<?= htmlspecialchars($puzzleId) ?>";
+    window.gameId = window.puzzleId; // Set gameId for score saving
+    
+    console.log('Server authentication state:', window.serverAuthState);
+    console.log('Global login state set to:', window.isLoggedIn);
+    console.log('Type of window.isLoggedIn:', typeof window.isLoggedIn);
+    console.log('Type of window.serverAuthState.isLoggedIn:', typeof window.serverAuthState.isLoggedIn);
+    
+    // Debug the modal display logic
+    console.log('=== MODAL DISPLAY DEBUG ===');
+    console.log('PHP $isLoggedIn value:', <?= $isLoggedIn ? 'true' : 'false' ?>);
+    console.log('PHP $currentUsername value:', "<?= htmlspecialchars($currentUsername) ?>");
+    console.log('Modal should show:', <?= $isLoggedIn ? '"Score saved message"' : '"Login message"' ?>);
+    console.log('=== END MODAL DEBUG ===');
 </script>
 <script src="/assets/js/game.js"></script>

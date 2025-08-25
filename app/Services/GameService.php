@@ -117,6 +117,31 @@ class GameService
     }
 
     /**
+     * Update a game with completion data
+     */
+    public function updateGame(string $gameId, array $data): bool
+    {
+        $allowedFields = [
+            'user_id', 'completion_time', 'hints_used', 'completed_at', 
+            'status', 'end_time', 'elapsed_time', 'words_found'
+        ];
+        
+        $updateData = [];
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+
+        if (empty($updateData)) {
+            return false;
+        }
+
+        $this->db->update('games', $updateData, ['puzzle_id' => $gameId]);
+        return true;
+    }
+
+    /**
      * Get user's game history
      */
     public function getUserGameHistory(int $userId, int $limit = 10): array

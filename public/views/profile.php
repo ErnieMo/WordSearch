@@ -21,6 +21,17 @@ $pageContent = '
                     </div>
                     
                     <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="bi bi-person-badge me-1"></i>Username
+                        </label>
+                        <input type="text" class="form-control" id="username" name="username" required minlength="3" maxlength="20">
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Your username is used for login and will be displayed on leaderboards. Must be 3-20 characters.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="email" class="form-label">Email Address</label>
                         <input type="email" class="form-control" id="email" name="email" required>
                     </div>
@@ -156,6 +167,7 @@ function loadProfile() {
                 const profile = response.profile;
                 
                 // Populate form fields
+                $('#username').val(profile.username || '');
                 $('#firstName').val(profile.first_name || '');
                 $('#lastName').val(profile.last_name || '');
                 $('#email').val(profile.email || '');
@@ -179,7 +191,25 @@ function updateProfile() {
         return;
     }
     
+    // Validate username
+    const username = $('#username').val().trim();
+    if (!username) {
+        showAlert('Username is required', 'danger');
+        return;
+    }
+    
+    if (username.length < 3) {
+        showAlert('Username must be at least 3 characters long', 'danger');
+        return;
+    }
+    
+    if (username.length > 20) {
+        showAlert('Username must be no more than 20 characters long', 'danger');
+        return;
+    }
+    
     const formData = {
+        username: username,
         first_name: $('#firstName').val(),
         last_name: $('#lastName').val(),
         email: $('#email').val(),
@@ -205,10 +235,18 @@ function updateProfile() {
                 localStorage.setItem('userDefaultDiagonals', formData.default_diagonals);
                 localStorage.setItem('userDefaultReverse', formData.default_reverse);
                 
+                // Update username in localStorage if it changed
+                if (formData.username) {
+                    localStorage.setItem('userUsername', formData.username);
+                }
+                
                 // Update user display name in navbar
                 if (window.WordSearchApp && window.WordSearchApp.updateAuthUI) {
                     window.WordSearchApp.updateAuthUI();
                 }
+                
+                // Update the navbar display name immediately
+                $('#userDisplayName').text(formData.username || formData.first_name || 'User');
             } else {
                 showAlert(response.error || 'Failed to update profile', 'danger');
             }

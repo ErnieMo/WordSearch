@@ -64,8 +64,21 @@
                 </ul>
                 
                 <ul class="navbar-nav" id="authNav">
+                    <?php
+                    // Session is already started in index.php
+                    // Debug session state in layout
+                    error_log("=== LAYOUT.PHP SESSION DEBUG ===");
+                    error_log("Session ID: " . (session_id() ?: 'NO SESSION ID'));
+                    error_log("Session status: " . session_status());
+                    error_log("Session data: " . print_r($_SESSION, true));
+                    error_log("isLoggedIn: " . (isset($_SESSION['user_id']) && isset($_SESSION['username']) ? 'true' : 'false'));
+                    error_log("=== END LAYOUT SESSION DEBUG ===");
+                    
+                    $isLoggedIn = isset($_SESSION['user_id']) && isset($_SESSION['username']);
+                    ?>
+                    
                     <!-- Guest Navigation -->
-                    <li class="nav-item" id="guestNav">
+                    <li class="nav-item <?= $isLoggedIn ? 'd-none' : '' ?>" id="guestNav">
                         <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#loginModal">
                             <i class="bi bi-box-arrow-in-right me-1"></i>Login
                         </button>
@@ -75,10 +88,10 @@
                     </li>
                     
                     <!-- Authenticated Navigation -->
-                    <li class="nav-item dropdown d-none" id="userNav">
+                    <li class="nav-item dropdown <?= $isLoggedIn ? '' : 'd-none' ?>" id="userNav">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle me-1"></i>
-                            <span id="userDisplayName">User</span>
+                            <span id="userDisplayName"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></span>
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Profile</a></li>

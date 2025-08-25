@@ -31,32 +31,25 @@
 
     // Apply user defaults to the UI
     function applyUserDefaults() {
-        const defaultTheme = localStorage.getItem('userDefaultTheme');
-        const defaultLevel = localStorage.getItem('userDefaultLevel');
-        const defaultDiagonals = localStorage.getItem('userDefaultDiagonals');
-        const defaultReverse = localStorage.getItem('userDefaultReverse');
+        // The server-side preferences are already applied to the HTML
+        // We just need to sync the JavaScript state with the UI
 
-        if (defaultTheme) {
-            // Pre-select the theme
-            $(`.theme-card[data-theme-id="${defaultTheme}"]`).addClass('selected');
-            selectedTheme = defaultTheme;
-            updateStartButton();
+        // Get the currently selected difficulty from the UI
+        const selectedDifficulty = $('input[name="difficulty"]:checked').val();
+        if (selectedDifficulty) {
+            console.log('Difficulty pre-selected by server:', selectedDifficulty);
         }
 
-        if (defaultLevel) {
-            // Pre-select the difficulty level
-            $(`input[name="difficulty"][value="${defaultLevel}"]`).prop('checked', true);
-        }
+        // Get the current checkbox states from the UI
+        const diagonalsEnabled = $('#diagonalsEnabled').is(':checked');
+        const reverseEnabled = $('#reverseEnabled').is(':checked');
 
-        if (defaultDiagonals !== null) {
-            // Set diagonal words preference
-            $('#diagonalsEnabled').prop('checked', defaultDiagonals === 'true');
-        }
+        console.log('Game options pre-selected by server - Diagonals:', diagonalsEnabled, 'Reverse:', reverseEnabled);
 
-        if (defaultReverse !== null) {
-            // Set reverse words preference
-            $('#reverseEnabled').prop('checked', defaultReverse === 'true');
-        }
+        // Store these preferences for future use
+        localStorage.setItem('guestLastDifficulty', selectedDifficulty);
+        localStorage.setItem('guestLastDiagonals', diagonalsEnabled);
+        localStorage.setItem('guestLastReverse', reverseEnabled);
     }
 
     // Handle play link click - use user defaults if available
@@ -146,6 +139,9 @@
                     $('#loginModal').modal('hide');
                     showAlert('Login successful!', 'success');
 
+                    // Check if there's saved game data to process
+                    checkForSavedGameData();
+
                     // Clear form
                     $('#loginForm')[0].reset();
                 } else {
@@ -193,6 +189,9 @@
                     updateAuthUI();
                     $('#registerModal').modal('hide');
                     showAlert('Registration successful! You are now logged in.', 'success');
+
+                    // Check if there's saved game data to process
+                    checkForSavedGameData();
 
                     // Clear form
                     $('#registerForm')[0].reset();
@@ -256,21 +255,45 @@
 
     function updateAuthUI() {
         if (currentUser) {
-            $('#guestNav').addClass('d-none');
-            $('#userNav').removeClass('d-none');
-            $('#userDisplayName').text(currentUser.firstName || currentUser.username);
+            // Only update if the server-side state doesn't already show the user
+            if ($('#guestNav').is(':visible')) {
+                $('#guestNav').addClass('d-none');
+                $('#userNav').removeClass('d-none');
+                $('#userDisplayName').text(currentUser.firstName || currentUser.username);
+            }
         } else {
-            $('#guestNav').removeClass('d-none');
-            $('#userNav').addClass('d-none');
+            // Only update if the server-side state doesn't already show the guest
+            if ($('#userNav').is(':visible')) {
+                $('#guestNav').removeClass('d-none');
+                $('#userNav').addClass('d-none');
+            }
         }
     }
 
     function checkAuthStatus() {
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            validateToken(token);
+        // Check if server-side already shows user as logged in
+        if ($('#userNav').is(':visible') && $('#guestNav').is(':hidden')) {
+            // User is already logged in via session, just get the token for API calls
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                // Need to get a fresh token since session exists but no token in localStorage
+                // This could happen if the page was refreshed
+                console.log('Session exists but no token, need to refresh authentication');
+                // For now, just update the UI to match server state
+                currentUser = {
+                    username: $('#userDisplayName').text()
+                };
+            }
             // Apply defaults for already logged in users
             setTimeout(applyUserDefaults, 100);
+        } else {
+            // Check localStorage token
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                validateToken(token);
+            } else {
+                updateAuthUI();
+            }
         }
     }
 
@@ -337,14 +360,10 @@
                         </div>
                         <div class="card-body text-center">
                             <p class="text-muted small mb-2">${theme.description}</p>
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-center align-items-center">
                                 <span class="badge bg-secondary">
                                     <i class="bi bi-list-ul me-1"></i>
                                     ${theme.word_count} words
-                                </string>
-                                <span class="badge bg-${getDifficultyColor(theme.difficulty)}">
-                                    <i class="bi bi-speedometer2 me-1"></i>
-                                    ${theme.difficulty}
                                 </span>
                             </div>
                         </div>
@@ -357,6 +376,15 @@
 
         // Log the themes that were loaded
         console.log(`Rendered ${themes.length} themes:`, themes.map(t => t.name));
+
+        // Auto-select the default theme (Animals) if no theme is currently selected
+        if (!selectedTheme) {
+            const defaultTheme = 'animals';
+            $(`.theme-card[data-theme-id="${defaultTheme}"]`).addClass('selected');
+            selectedTheme = defaultTheme;
+            updateStartButton();
+            console.log('Auto-selected default theme:', defaultTheme);
+        }
     }
 
     function getDifficultyColor(difficulty) {
@@ -393,6 +421,9 @@
             return;
         }
 
+        // Get authentication token (optional - users can play without logging in)
+        const token = localStorage.getItem('authToken');
+
         const difficulty = $('input[name="difficulty"]:checked').val();
         const diagonals = $('#diagonalsEnabled').is(':checked');
         const reverse = $('#reverseEnabled').is(':checked');
@@ -410,10 +441,19 @@
             }
         };
 
+        // Prepare headers (only include Authorization if token exists)
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         $.ajax({
             url: '/api/generate',
             method: 'POST',
-            contentType: 'application/json',
+            headers: headers,
             data: JSON.stringify(puzzleData),
             success: function (response) {
                 $('#loadingModal').modal('hide');
@@ -431,7 +471,12 @@
             error: function (xhr) {
                 $('#loadingModal').modal('hide');
                 const response = xhr.responseJSON;
-                showAlert(response?.error || 'Failed to generate puzzle', 'danger');
+                if (xhr.status === 401) {
+                    showAlert('Authentication required. Please log in to save your score to the leaderboard.', 'info');
+                    // Don't force login - user can still play as guest
+                } else {
+                    showAlert(response?.error || 'Failed to generate puzzle', 'danger');
+                }
             }
         });
     }
@@ -463,6 +508,72 @@
         $('#totalPuzzles').text(stats.total_puzzles || 0);
         $('#totalPlayers').text(stats.total_themes || 0);
         $('#bestTime').text('--');
+    }
+
+    // Check for saved game data after login/registration
+    function checkForSavedGameData() {
+        const tempGameData = localStorage.getItem('tempGameData');
+        const tempGameTimestamp = localStorage.getItem('tempGameTimestamp');
+
+        if (tempGameData && tempGameTimestamp) {
+            // Check if the saved data is recent (within last hour)
+            const savedTime = parseInt(tempGameTimestamp);
+            const currentTime = Date.now();
+            const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+
+            if (currentTime - savedTime < oneHour) {
+                try {
+                    const gameData = JSON.parse(tempGameData);
+                    console.log('Found saved game data after login:', gameData);
+
+                    // Save the score now that user is logged in
+                    saveScoreAfterLogin(gameData);
+
+                    // Clear temporary data
+                    localStorage.removeItem('tempGameData');
+                    localStorage.removeItem('tempGameTimestamp');
+
+                    showAlert('Your previous game score has been saved to the scoreboard!', 'success');
+                } catch (e) {
+                    console.error('Error processing saved game data:', e);
+                    localStorage.removeItem('tempGameData');
+                    localStorage.removeItem('tempGameTimestamp');
+                }
+            } else {
+                // Data is too old, remove it
+                localStorage.removeItem('tempGameData');
+                localStorage.removeItem('tempGameTimestamp');
+            }
+        }
+    }
+
+    // Save score after user logs in (for previously completed games)
+    function saveScoreAfterLogin(gameData) {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            console.error('No auth token available for saving score');
+            return;
+        }
+
+        $.ajax({
+            url: '/api/scores/save',
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify(gameData),
+            success: function (response) {
+                if (response.success) {
+                    console.log('Previously completed game score saved:', response);
+                } else {
+                    console.error('Failed to save previous game score:', response.error);
+                }
+            },
+            error: function (xhr) {
+                console.error('Error saving previous game score:', xhr.responseText);
+            }
+        });
     }
 
     // Export functions for use in other scripts

@@ -12,6 +12,8 @@ class DatabaseService
 {
     private ?PDO $connection = null;
     private array $config;
+    private string $logFile;
+    private ?string $currentLogEntry = null;
 
     public function __construct()
     {
@@ -43,9 +45,22 @@ class DatabaseService
 
     public function query(string $sql, array $params = []): PDOStatement
     {
-        $stmt = $this->getConnection()->prepare($sql);
-        $stmt->execute($params);
-        return $stmt;
+        // Log the query with file location and line number
+        $this->logQuery($sql, $params);
+        
+        try {
+            $stmt = $this->getConnection()->prepare($sql);
+            $stmt->execute($params);
+            
+            // Log success
+            $this->logQueryResult('success');
+            
+            return $stmt;
+        } catch (PDOException $e) {
+            // Log failure with reason
+            $this->logQueryResult('failure', $e->getMessage());
+            throw $e;
+        }
     }
 
     public function fetchOne(string $sql, array $params = []): ?array
@@ -126,9 +141,13 @@ class DatabaseService
     public function isConnected(): bool
     {
         try {
+            // Log the connection test query
+            $this->logQuery('SELECT 1', []);
             $this->getConnection()->query('SELECT 1');
+            $this->logQueryResult('success');
             return true;
         } catch (PDOException $e) {
+            $this->logQueryResult('failure', $e->getMessage());
             return false;
         }
     }
@@ -136,5 +155,71 @@ class DatabaseService
     public function close(): void
     {
         $this->connection = null;
+    }
+
+    /**
+     * Log database queries to the database log file
+     */
+    private function logQuery(string $sql, array $params = []): void
+    {
+        $this->logFile = '/var/www/html/WordSearch/Dev/log/database.log';
+        
+        // Get the calling file and line number
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+        $callingFile = 'Unknown';
+        $callingLine = 0;
+        
+        // Find the first caller that's not in DatabaseService
+        foreach ($backtrace as $trace) {
+            if (isset($trace['file']) && strpos($trace['file'], 'DatabaseService.php') === false) {
+                $callingFile = $trace['file'];
+                $callingLine = $trace['line'];
+                break;
+            }
+        }
+        
+        // Format the log entry
+        $timestamp = date('Y-m-d H:i:s');
+        $relativePath = str_replace('/var/www/html/WordSearch/Dev/', '', $callingFile);
+        
+        $this->currentLogEntry = "[{$timestamp}] File: {$relativePath}:{$callingLine}\n";
+        $this->currentLogEntry .= "SQL: {$sql}\n";
+        
+        if (!empty($params)) {
+            $this->currentLogEntry .= "Parameters: " . json_encode($params, JSON_PRETTY_PRINT) . "\n";
+        }
+        
+        // Don't add the double newline yet - wait for the result
+    }
+
+    /**
+     * Log the result of a database query
+     */
+    private function logQueryResult(string $status, string $errorMessage = ''): void
+    {
+        if (!isset($this->currentLogEntry)) {
+            return;
+        }
+
+        // Add the result to the current log entry
+        if ($status === 'success') {
+            $this->currentLogEntry .= "Result: (success)\n";
+        } else {
+            $this->currentLogEntry .= "Result: (failure - {$errorMessage})\n";
+        }
+        
+        $this->currentLogEntry .= "\n\n"; // Double newline between queries as requested
+        
+        // Ensure the log directory exists and is writable
+        $logDir = dirname($this->logFile);
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+        
+        // Write to log file with file locking
+        file_put_contents($this->logFile, $this->currentLogEntry, FILE_APPEND | LOCK_EX);
+        
+        // Clear the current log entry
+        $this->currentLogEntry = null;
     }
 }

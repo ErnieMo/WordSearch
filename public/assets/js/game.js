@@ -18,6 +18,10 @@
     // DOM ready
     $(document).ready(function () {
         console.log('DOM ready, puzzleId:', window.puzzleId);
+
+        // Check if user is logged in
+        checkLoginStatus();
+
         if (window.puzzleId) {
             loadPuzzle(window.puzzleId);
             setupGameEventListeners();
@@ -25,6 +29,31 @@
             console.error('No puzzleId found');
         }
     });
+
+    // Check if user is logged in and set global variable
+    function checkLoginStatus() {
+        console.log('checkLoginStatus called with serverAuthState:', window.serverAuthState);
+        console.log('Current window.isLoggedIn value:', window.isLoggedIn);
+
+        // If window.isLoggedIn is already set by server, respect that value
+        if (typeof window.isLoggedIn !== 'undefined') {
+            console.log('Respecting server-set login state:', window.isLoggedIn);
+            return;
+        }
+
+        // First check server-side authentication state (more reliable)
+        if (window.serverAuthState && window.serverAuthState.isLoggedIn) {
+            window.isLoggedIn = true;
+            console.log('User logged in via server session:', window.serverAuthState.username);
+        } else {
+            // Fallback to localStorage token check
+            const token = localStorage.getItem('authToken');
+            window.isLoggedIn = !!token;
+            console.log('User login status from localStorage:', window.isLoggedIn);
+        }
+
+        console.log('Final window.isLoggedIn value:', window.isLoggedIn);
+    }
 
     // Load puzzle data
     function loadPuzzle(puzzleId) {
@@ -556,12 +585,159 @@
         const seconds = elapsed % 60;
         const timeString = (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
 
-        $('#completionTime').text(timeString);
-        $('#hintsUsed').text(gameState.hintsUsed);
+        // Update completion modal with game stats (both modals)
+        $('#completionTimeLoggedIn').text(timeString);
+        $('#hintsUsedLoggedIn').text(gameState.hintsUsed);
+        $('#completionTimeGuest').text(timeString);
+        $('#hintsUsedGuest').text(gameState.hintsUsed);
 
-        // Show completion modal
-        $('#completionModal').modal('show');
+        // Save game completion data
+        const gameData = {
+            game_id: window.gameId,
+            completion_time: elapsed,
+            hints_used: gameState.hintsUsed,
+            words_found: gameState.foundWords.length,
+            total_words: gameState.words.length
+        };
+
+        // Debug the gameData object
+        console.log('Game data being sent:', gameData);
+        console.log('Individual values:', {
+            game_id: window.gameId,
+            completion_time: elapsed,
+            hints_used: gameState.hintsUsed,
+            words_found: gameState.foundWords.length,
+            total_words: gameState.words.length
+        });
+
+        // Check if user is logged in
+        console.log('Game completion - Authentication check:', {
+            windowIsLoggedIn: window.isLoggedIn,
+            serverAuthState: window.serverAuthState,
+            localStorageToken: !!localStorage.getItem('authToken'),
+            windowIsLoggedInType: typeof window.isLoggedIn,
+            serverAuthStateType: typeof window.serverAuthState
+        });
+
+        // Debug: Check if the values are what we expect
+        console.log('Raw values:', {
+            windowIsLoggedIn: window.isLoggedIn,
+            serverAuthState: window.serverAuthState
+        });
+
+        // Debug: Check what the modal should display
+        console.log('=== MODAL DISPLAY CHECK ===');
+        console.log('Current window.isLoggedIn:', window.isLoggedIn);
+        console.log('Current serverAuthState.isLoggedIn:', window.serverAuthState?.isLoggedIn);
+        console.log('Modal should show:', window.isLoggedIn ? 'Score saved message' : 'Login message');
+        console.log('=== END MODAL DISPLAY CHECK ===');
+
+        if (window.isLoggedIn) {
+            // User is logged in, save score immediately
+            console.log('User is logged in, saving score...');
+            saveScore(gameData);
+        } else {
+            // User is not logged in, save to session (PHP will show appropriate message)
+            console.log('User is not logged in, saving to session...');
+            saveGameToSession(gameData);
+        }
+
+        // Show the appropriate completion modal based on login status
+        console.log('=== SHOWING COMPLETION MODAL ===');
+        console.log('About to show modal with authentication state:', window.isLoggedIn);
+
+        if (window.isLoggedIn) {
+            // User is logged in - show logged-in modal
+            console.log('Showing logged-in modal');
+            $('#completionModalLoggedIn').modal('show');
+        } else {
+            // User is not logged in - show guest modal
+            console.log('Showing guest modal');
+            $('#completionModalGuest').modal('show');
+        }
+
+        console.log('=== END MODAL SHOW ===');
     }
+
+    // Save score to database (for logged-in users)
+    function saveScore(gameData) {
+        console.log('saveScore called with gameData:', gameData);
+        console.log('gameData type:', typeof gameData);
+        console.log('gameData JSON:', JSON.stringify(gameData));
+
+        const token = localStorage.getItem('authToken');
+
+        if (!token && window.serverAuthState && window.serverAuthState.isLoggedIn) {
+            // User is logged in via session but no token in localStorage
+            // This could happen if the page was refreshed or token expired
+            console.log('User logged in via session but no token, attempting to save score without token');
+
+            // Try to save score without token (server should recognize session)
+            $.ajax({
+                url: '/api/scores/save',
+                method: 'POST',
+                data: JSON.stringify(gameData),
+                contentType: 'application/json',
+                success: function (response) {
+                    console.log('API response received:', response);
+                    if (response.success) {
+                        console.log('Score saved successfully via session:', response);
+                        // PHP already shows the correct message, no need to change display
+                    } else {
+                        console.error('Failed to save score. Response:', response);
+                        console.error('Error field:', response.error);
+                        console.error('Full response object:', JSON.stringify(response));
+                        // PHP already shows the correct message, no need to change display
+                    }
+                },
+                error: function (xhr) {
+                    console.error('Error saving score via session:', xhr.responseText);
+                    // PHP already shows the correct message, no need to change display
+                }
+            });
+        } else if (token) {
+            // User has token, use it for authentication
+            $.ajax({
+                url: '/api/scores/save',
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                data: JSON.stringify(gameData),
+                contentType: 'application/json',
+                success: function (response) {
+                    console.log('API response received (token):', response);
+                    if (response.success) {
+                        console.log('Score saved successfully via token:', response);
+                        // PHP already shows the correct message, no need to change display
+                    } else {
+                        console.error('Failed to save score (token). Response:', response);
+                        console.error('Error field:', response.error);
+                        console.error('Full response object:', JSON.stringify(response));
+                        // PHP already shows the correct message, no need to change display
+                    }
+                },
+                error: function (xhr) {
+                    console.error('Error saving score via token:', xhr.responseText);
+                    // PHP already shows the correct message, no need to change display
+                }
+            });
+        } else {
+            // No authentication available
+            console.error('No authentication available for saving score');
+            // PHP already shows the correct message, no need to change display
+        }
+    }
+
+    // Save game data to session (for guest users)
+    function saveGameToSession(gameData) {
+        // Store in localStorage as temporary data
+        localStorage.setItem('tempGameData', JSON.stringify(gameData));
+        localStorage.setItem('tempGameTimestamp', Date.now().toString());
+        console.log('Game data saved to session:', gameData);
+    }
+
+
 
     // Setup game event listeners
     function setupGameEventListeners() {
@@ -593,9 +769,10 @@
             window.location.href = '/';
         });
 
-        // Play again button
-        $('#playAgainBtn').on('click', function () {
-            $('#completionModal').modal('hide');
+        // Play again buttons for both modals
+        $('#playAgainBtnLoggedIn, #playAgainBtnGuest').on('click', function () {
+            // Hide whichever modal is currently open
+            $('#completionModalLoggedIn, #completionModalGuest').modal('hide');
             window.location.href = '/';
         });
 
@@ -741,6 +918,11 @@
             $('#almostCompleteBtn').on('click', function () {
                 almostCompletePuzzle();
             });
+
+            // Setup Complete button
+            $('#completeBtn').on('click', function () {
+                completePuzzle();
+            });
         }
     }
 
@@ -784,6 +966,43 @@
 
         // Update verification status to show progress
         updateVerificationStatus(wordsToFind.length, gameState.words.length);
+    }
+
+    // Development mode: Complete puzzle immediately
+    function completePuzzle() {
+        if (!gameState.words || gameState.words.length === 0) {
+            showAlert('No words available', 'warning');
+            return;
+        }
+
+        console.log('Development: Completing puzzle immediately. Finding all words:', gameState.words);
+
+        // Find all words
+        if (gameState.placedWords && gameState.placedWords.length > 0) {
+            gameState.placedWords.forEach(placedWord => {
+                // Highlight the word in the grid
+                const cells = getCellsInLine(placedWord.start, placedWord.end, placedWord.direction);
+                cells.forEach(cell => {
+                    const $cell = $(`.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`);
+                    if ($cell.length > 0) {
+                        $cell.addClass('found');
+                    }
+                });
+
+                // Mark word as found in the word list
+                $(`.word-item[data-word="${placedWord.word}"]`).addClass('found');
+            });
+        }
+
+        // Update game state to show all words found
+        gameState.foundWords = [...gameState.words];
+        updateProgress();
+
+        // Show completion message
+        showAlert(`Development: Puzzle completed! All ${gameState.words.length} words found.`, 'success');
+
+        // Complete the game immediately
+        completeGame();
     }
 
 })();
