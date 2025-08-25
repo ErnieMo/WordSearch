@@ -97,6 +97,9 @@
 
         // Verify all words are in the grid and highlight them
         verifyAllWords();
+
+        // Initialize hint button
+        updateHintButton();
     }
 
     // Update the grid size display in the title
@@ -558,7 +561,9 @@
 
     // Start the game timer
     function startTimer() {
-        gameState.startTime = Date.now();
+        const now = Date.now();
+        console.log('Starting timer at:', now, 'Current time:', new Date(now).toISOString());
+        gameState.startTime = now;
         gameState.timer = setInterval(updateTimer, 1000);
     }
 
@@ -580,7 +585,17 @@
     function completeGame() {
         clearInterval(gameState.timer);
 
-        const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+        const currentTime = Date.now();
+        const elapsed = Math.floor((currentTime - gameState.startTime) / 1000);
+
+        console.log('=== TIME CALCULATION DEBUG ===');
+        console.log('Current time (Date.now()):', currentTime);
+        console.log('Start time (gameState.startTime):', gameState.startTime);
+        console.log('Raw difference (ms):', currentTime - gameState.startTime);
+        console.log('Calculated elapsed (seconds):', elapsed);
+        console.log('Start time as Date:', new Date(gameState.startTime).toISOString());
+        console.log('Current time as Date:', new Date(currentTime).toISOString());
+
         const minutes = Math.floor(elapsed / 60);
         const seconds = elapsed % 60;
         const timeString = (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
@@ -745,11 +760,22 @@
         $('#hintBtn').on('click', function () {
             if (gameState.hintsUsed < 3) {
                 gameState.hintsUsed++;
+                updateHintButton();
                 showHint();
             } else {
                 showGameError('No more hints available!');
             }
         });
+
+        // Update hint button display
+        function updateHintButton() {
+            const remainingHints = 3 - gameState.hintsUsed;
+            $('#hintBtn').html(`<i class="bi bi-lightbulb me-2"></i>Hint (${remainingHints})`);
+
+            if (remainingHints === 0) {
+                $('#hintBtn').prop('disabled', true).addClass('disabled');
+            }
+        }
 
         // Reset selection button
         $('#resetBtn').on('click', function () {
