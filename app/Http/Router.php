@@ -9,6 +9,7 @@ use App\Services\PuzzleGenerator;
 use App\Services\ThemeService;
 use App\Services\GameService;
 use App\Services\DatabaseService;
+use PDO;
 
 class Router
 {
@@ -74,19 +75,25 @@ class Router
     {
         $path = parse_url($path, PHP_URL_PATH);
         
+        // Debug logging
+        error_log("Router: Handling request - Method: $method, Path: $path");
+        
         foreach ($this->routes as $route) {
             if ($route['method'] === $method && $this->matchPath($route['path'], $path)) {
+                error_log("Router: Route matched! Calling handler: " . get_class($route['handler'][0]) . "::" . $route['handler'][1]);
                 try {
                     $params = $this->extractPathParams($route['path'], $path);
                     call_user_func_array($route['handler'], $params);
                     return;
                 } catch (\Exception $e) {
+                    error_log("Router: Handler error: " . $e->getMessage());
                     $this->sendErrorResponse($e->getMessage(), 500);
                     return;
                 }
             }
         }
         
+        error_log("Router: No route found for $method $path");
         $this->sendErrorResponse('Route not found', 404);
     }
 
@@ -386,7 +393,7 @@ class Router
             $offset = ($page - 1) * $perPage;
             
             // Build the base query for completed games
-            $whereConditions = ["g.status = 'completed'"];
+            $whereConditions = ["g.status = 'completed'", "g.completion_time > 0"];
             $params = [];
             
             if ($theme) {
@@ -416,7 +423,7 @@ class Router
             
             // Get total count for pagination
             $countSql = "SELECT COUNT(*) FROM games g WHERE $whereClause";
-            $countStmt = $this->db->query($countSql, $params);
+            $countStmt = $this->dbService->query($countSql, $params);
             $totalScores = $countStmt->fetchColumn();
             
             // Get scores with user information
@@ -426,7 +433,7 @@ class Router
                     g.puzzle_id,
                     g.theme,
                     g.difficulty,
-                    g.elapsed_time,
+                    g.completion_time as elapsed_time,
                     g.hints_used,
                     g.words_found,
                     g.total_words,
@@ -435,12 +442,18 @@ class Router
                 FROM games g
                 LEFT JOIN users u ON g.user_id = u.id
                 WHERE $whereClause
-                ORDER BY g.elapsed_time ASC, g.hints_used ASC, g.end_time DESC
+                ORDER BY g.completion_time ASC, g.hints_used ASC, g.end_time DESC
                 LIMIT $perPage OFFSET $offset
             ";
             
-            $scoresStmt = $this->db->query($scoresSql, $params);
+            $scoresStmt = $this->dbService->query($scoresSql, $params);
             $scores = $scoresStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Debug logging
+            error_log("Scores query executed. Found " . count($scores) . " scores out of $totalScores total");
+            if (count($scores) > 0) {
+                error_log("First score sample: " . json_encode($scores[0]));
+            }
             
             // Calculate pagination info
             $totalPages = ceil($totalScores / $perPage);
@@ -478,7 +491,7 @@ class Router
                     g.puzzle_id,
                     g.theme,
                     g.difficulty,
-                    g.elapsed_time,
+                    g.completion_time as elapsed_time,
                     g.hints_used,
                     g.words_found,
                     g.total_words,
@@ -489,7 +502,7 @@ class Router
                 LIMIT 50
             ";
             
-            $scoresStmt = $this->db->query($scoresSql, ['user_id' => $user['user_id']]);
+            $scoresStmt = $this->dbService->query($scoresSql, ['user_id' => $user['user_id']]);
             $scores = $scoresStmt->fetchAll(PDO::FETCH_ASSOC);
             
             $this->sendJsonResponse([
@@ -511,14 +524,14 @@ class Router
                 SELECT 
                     COUNT(*) as total_games,
                     COUNT(DISTINCT g.user_id) as total_players,
-                    AVG(g.elapsed_time) as avg_time,
-                    MIN(g.elapsed_time) as best_time,
+                    AVG(g.completion_time) as avg_time,
+                    MIN(g.completion_time) as best_time,
                     AVG(g.hints_used) as avg_hints
                 FROM games g
-                WHERE g.status = 'completed'
+                WHERE g.status = 'completed' AND g.completion_time > 0
             ";
             
-            $statsStmt = $this->db->query($statsSql);
+            $statsStmt = $this->dbService->query($statsSql);
             $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
             
             // Get theme popularity
@@ -532,7 +545,7 @@ class Router
                 ORDER BY game_count DESC
             ";
             
-            $themeStmt = $this->db->query($themeSql);
+            $themeStmt = $this->dbService->query($themeSql);
             $themeStats = $themeStmt->fetchAll(PDO::FETCH_ASSOC);
             
             $this->sendJsonResponse([
@@ -566,28 +579,34 @@ class Router
             $statsSql = "
                 SELECT 
                     COUNT(*) as total_games,
-                    AVG(CASE WHEN g.elapsed_time > 0 THEN g.elapsed_time END) as avg_time,
+                    AVG(CASE WHEN g.completion_time > 0 THEN g.completion_time END) as avg_time,
                     SUM(g.hints_used) as total_hints,
                     COUNT(CASE WHEN g.status = 'completed' THEN 1 END) as completed_games
                 FROM games g
                 WHERE g.user_id = :user_id
             ";
             
-            $statsStmt = $this->db->query($statsSql, ['user_id' => $user['user_id']]);
+            $statsStmt = $this->dbService->query($statsSql, ['user_id' => $user['user_id']]);
             $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Debug logging
+            error_log("User stats query executed for user " . $user['user_id'] . ": " . json_encode($stats));
             
             // Get best times for each difficulty
             $bestTimesSql = "
                 SELECT 
                     difficulty,
-                    MIN(elapsed_time) as best_time
+                    MIN(completion_time) as best_time
                 FROM games
-                WHERE user_id = :user_id AND status = 'completed'
+                WHERE user_id = :user_id AND status = 'completed' AND completion_time > 0
                 GROUP BY difficulty
             ";
             
-            $bestTimesStmt = $this->db->query($bestTimesSql, ['user_id' => $user['user_id']]);
+            $bestTimesStmt = $this->dbService->query($bestTimesSql, ['user_id' => $user['user_id']]);
             $bestTimes = $bestTimesStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Debug logging
+            error_log("Best times query executed for user " . $user['user_id'] . ": " . json_encode($bestTimes));
             
             // Organize best times by difficulty
             $bestTimeEasy = null;
@@ -793,6 +812,7 @@ class Router
             $updateData = [
                 'user_id' => $user['user_id'],
                 'completion_time' => $completionTime,
+                'elapsed_time' => $completionTime, // Set elapsed_time to completion_time
                 'hints_used' => $hintsUsed,
                 'completed_at' => date('Y-m-d H:i:s'),
                 'status' => 'completed'

@@ -786,21 +786,58 @@
         if (unfoundWords.length === 0) return;
 
         const randomWord = unfoundWords[Math.floor(Math.random() * unfoundWords.length)];
+
+        // Find the placed word data for this word
+        const placedWord = gameState.placedWords.find(pw => pw.word === randomWord);
+        if (!placedWord) return;
+
+        // Calculate how many letters to highlight (first 2-3 letters)
+        const hintLength = Math.min(3, Math.max(2, Math.floor(randomWord.length * 0.3)));
+
+        // Get the cells to highlight (just the beginning of the word)
+        const start = placedWord.start;
+        const end = placedWord.end;
+        const direction = placedWord.direction;
+
+        // Calculate the end position for the hint (just the first few letters)
+        const hintEnd = [
+            start[0] + (direction[0] * (hintLength - 1)),
+            start[1] + (direction[1] * (hintLength - 1))
+        ];
+
+        // Get cells for just the hint portion
+        const hintCells = getCellsInLine(start, hintEnd);
+
+        // Remove any existing hint highlights
+        $('.word-grid td').removeClass('hint-highlight');
+
+        // Add hint highlight to the beginning of the word
+        hintCells.forEach(cell => {
+            const selector = `.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`;
+            $(selector).addClass('hint-highlight');
+        });
+
+        // Show a brief message about the hint
         const alert = $(`
             <div class="alert alert-info alert-dismissible fade show position-fixed" 
                  style="top: 20px; right: 20px; z-index: 9999;">
                 <i class="bi bi-lightbulb me-2"></i>
-                <strong>Hint:</strong> Look for "${randomWord}"
+                <strong>Hint:</strong> Look at the highlighted area
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `);
 
         $('body').append(alert);
 
-        // Auto-dismiss after 3 seconds
+        // Auto-dismiss after 2 seconds
         setTimeout(() => {
             alert.fadeOut(() => alert.remove());
-        }, 3000);
+        }, 2000);
+
+        // Remove hint highlights after 5 seconds
+        setTimeout(() => {
+            $('.word-grid td').removeClass('hint-highlight');
+        }, 5000);
     }
 
     // Show solution

@@ -73,6 +73,7 @@ $pageContent = '
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Game Options</h5>
             </div>
+            
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6 mb-3">

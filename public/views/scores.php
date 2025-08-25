@@ -183,49 +183,86 @@ window.serverAuthState = {
     username: "<?= htmlspecialchars($_SESSION['username'] ?? '') ?>"
 };
 
+// Global state
+let currentDifficulty = 'easy';
+
 // Initialize scores page
 $(document).ready(function() {
+    console.log("Scores page initialized");
+    console.log("Current difficulty:", currentDifficulty);
+    
     loadScores();
     
     // Show my stats if user is logged in
     if (window.serverAuthState.isLoggedIn) {
-        loadMyStats();
+        loadUserStats();
         $("#myStatsCard").show();
     }
     
-    // Setup filter event listeners
-    $("#applyFilters").on("click", loadScores);
-    $("#resetFilters").on("click", resetFilters);
-    
-    // Auto-apply filters when selections change
-    $("#themeFilter, #difficultyFilter, #timeFilter").on("change", loadScores);
+    // Setup difficulty tab event listeners
+    $(".difficulty-tab").on("click", function() {
+        const difficulty = $(this).data("difficulty");
+        switchDifficulty(difficulty);
+    });
 });
 
-// Load scores with current filters
-function loadScores(page = 1) {
-    const filters = {
-        theme: $("#themeFilter").val(),
-        difficulty: $("#difficultyFilter").val(),
-        timeRange: $("#timeFilter").val(),
-        page: page
-    };
+// Switch between difficulty tabs
+function switchDifficulty(difficulty) {
+    console.log("Switching to difficulty:", difficulty);
+    currentDifficulty = difficulty;
     
+    // Update tab states
+    $(".difficulty-tab").removeClass("active btn-success btn-warning btn-danger btn-dark").addClass("btn-outline-secondary");
+    $(`.difficulty-tab[data-difficulty="${difficulty}"]`).removeClass("btn-outline-secondary");
+    
+    // Set active tab styling based on difficulty
+    const activeTab = $(`.difficulty-tab[data-difficulty="${difficulty}"]`);
+    switch (difficulty) {
+        case 'easy':
+            activeTab.addClass("btn-success");
+            $("#leaderboardTitle").text("Easy Leaderboard").removeClass().addClass("text-success");
+            break;
+        case 'medium':
+            activeTab.addClass("btn-warning");
+            $("#leaderboardTitle").text("Medium Leaderboard").removeClass().addClass("text-warning");
+            break;
+        case 'hard':
+            activeTab.addClass("btn-danger");
+            $("#leaderboardTitle").text("Hard Leaderboard").removeClass().addClass("text-danger");
+            break;
+        case 'expert':
+            activeTab.addClass("btn-dark");
+            $("#leaderboardTitle").text("Expert Leaderboard").removeClass().addClass("text-dark");
+            break;
+    }
+    
+    // Load scores for this difficulty
+    loadScores();
+}
+
+// Load scores for current difficulty
+function loadScores(page = 1) {
+    console.log("Loading scores for difficulty:", currentDifficulty);
     $("#loadingScores").show();
     $("#scoresTableBody").empty();
     $("#noScores").hide();
-    $("#scoresPagination").hide();
     
     $.ajax({
         url: "/api/scores",
         method: "GET",
-        data: filters,
+        data: {
+            difficulty: currentDifficulty,
+            page: page
+        },
         success: function(response) {
+            console.log("Scores API response:", response);
             $("#loadingScores").hide();
             
             if (response.success && response.scores.length > 0) {
+                console.log("Rendering", response.scores.length, "scores");
                 renderScores(response.scores);
-                renderPagination(response.pagination);
             } else {
+                console.log("No scores found, showing no scores message");
                 $("#noScores").show();
             }
         },
@@ -310,13 +347,7 @@ function updateAchievements(stats) {
     $("#successRate").text(stats.success_rate ? `${stats.success_rate}%` : "0%");
 }
 
-// Reset all filters
-function resetFilters() {
-    $("#themeFilter").val("");
-    $("#difficultyFilter").val("");
-    $("#timeFilter").val("all");
-    loadScores();
-}
+
 
 // Get rank badge styling
 function getRankBadge(rank) {
@@ -349,50 +380,5 @@ function formatDate(dateString) {
     return date.toLocaleDateString();
 }
 
-function renderPagination(pagination) {
-    if (!pagination || pagination.total_pages <= 1) return;
-    
-    const paginationEl = $("#scoresPagination");
-    const ul = paginationEl.find("ul");
-    ul.empty();
-    
-    // Previous button
-    if (pagination.current_page > 1) {
-        ul.append(`
-            <li class="page-item">
-                <a class="page-link" href="#" data-page="${pagination.current_page - 1}">Previous</a>
-            </li>
-        `);
-    }
-    
-    // Page numbers
-    for (let i = 1; i <= pagination.total_pages; i++) {
-        const active = i === pagination.current_page ? "active" : "";
-        ul.append(`
-            <li class="page-item ${active}">
-                <a class="page-link" href="#" data-page="${i}">${i}</a>
-            </li>
-        `);
-    }
-    
-    // Next button
-    if (pagination.current_page < pagination.total_pages) {
-        ul.append(`
-            <li class="page-item">
-                <a class="page-link" href="#" data-page="${pagination.current_page + 1}">Next</a>
-            </li>
-        `);
-    }
-    
-    // Handle pagination clicks
-    ul.on("click", ".page-link", function(e) {
-        e.preventDefault();
-        const page = $(this).data("page");
-        if (page) {
-            loadScores(page);
-        }
-    });
-    
-    paginationEl.show();
-}
+
 </script>
