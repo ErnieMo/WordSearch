@@ -263,8 +263,14 @@ class Router
         try {
             // Determine grid size and word count based on difficulty
             $difficulty = $options['difficulty'] ?? 'medium';
-            $gridSize = $difficulty === 'easy' ? 10 : ($difficulty === 'medium' ? 15 : 20);
-            $wordCount = $gridSize; // Grid size always equals word count
+            $gridSize = match($difficulty) {
+                'easy' => 10,
+                'medium' => 15,
+                'hard' => 20,
+                'expert' => 25,
+                default => 15
+            };
+            $wordCount = $difficulty === 'expert' ? 35 : $gridSize; // Expert gets more words than grid size
             
             // Get ALL words from the theme service (we'll filter and randomize in the puzzle generator)
             $words = $this->themeService->getThemeWords($themeId);

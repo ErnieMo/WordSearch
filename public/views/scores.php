@@ -363,6 +363,7 @@ function getDifficultyColor(difficulty) {
         case "easy": return "success";
         case "medium": return "warning";
         case "hard": return "danger";
+        case "expert": return "dark";
         default: return "secondary";
     }
 }
