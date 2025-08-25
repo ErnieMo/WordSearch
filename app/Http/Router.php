@@ -437,7 +437,7 @@ class Router
                     g.hints_used,
                     g.words_found,
                     g.total_words,
-                    g.end_time as created_at,
+                    COALESCE(g.completed_at, g.end_time) as created_at,
                     COALESCE(u.username, 'Guest') as username
                 FROM games g
                 LEFT JOIN users u ON g.user_id = u.id
@@ -495,7 +495,7 @@ class Router
                     g.hints_used,
                     g.words_found,
                     g.total_words,
-                    g.end_time as created_at
+                    COALESCE(g.completed_at, g.end_time) as created_at
                 FROM games g
                 WHERE g.user_id = :user_id AND g.status = 'completed'
                 ORDER BY g.end_time DESC
