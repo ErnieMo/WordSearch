@@ -812,7 +812,6 @@ class Router
             $updateData = [
                 'user_id' => $user['user_id'],
                 'completion_time' => $completionTime,
-                'elapsed_time' => $completionTime, // Set elapsed_time to completion_time
                 'hints_used' => $hintsUsed,
                 'completed_at' => date('Y-m-d H:i:s'),
                 'status' => 'completed'

@@ -23,8 +23,8 @@
         checkLoginStatus();
 
         if (window.puzzleId) {
-            loadPuzzle(window.puzzleId);
             setupGameEventListeners();
+            loadPuzzle(window.puzzleId);
         } else {
             console.error('No puzzleId found');
         }
@@ -75,6 +75,9 @@
 
                     renderGame();
                     startTimer();
+
+                    // Initialize hint button after event listeners are set up
+                    updateHintButton();
                 } else {
                     showGameError('Failed to load puzzle: ' + (response.error || 'Unknown error'));
                 }
@@ -97,9 +100,6 @@
 
         // Verify all words are in the grid and highlight them
         verifyAllWords();
-
-        // Initialize hint button
-        updateHintButton();
     }
 
     // Update the grid size display in the title
@@ -561,9 +561,7 @@
 
     // Start the game timer
     function startTimer() {
-        const now = Date.now();
-        console.log('Starting timer at:', now, 'Current time:', new Date(now).toISOString());
-        gameState.startTime = now;
+        gameState.startTime = Date.now();
         gameState.timer = setInterval(updateTimer, 1000);
     }
 
@@ -585,20 +583,17 @@
     function completeGame() {
         clearInterval(gameState.timer);
 
-        const currentTime = Date.now();
-        const elapsed = Math.floor((currentTime - gameState.startTime) / 1000);
-
-        console.log('=== TIME CALCULATION DEBUG ===');
-        console.log('Current time (Date.now()):', currentTime);
-        console.log('Start time (gameState.startTime):', gameState.startTime);
-        console.log('Raw difference (ms):', currentTime - gameState.startTime);
-        console.log('Calculated elapsed (seconds):', elapsed);
-        console.log('Start time as Date:', new Date(gameState.startTime).toISOString());
-        console.log('Current time as Date:', new Date(currentTime).toISOString());
-
+        const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
         const minutes = Math.floor(elapsed / 60);
         const seconds = elapsed % 60;
         const timeString = (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+
+        // Debug: Log the time calculation
+        console.log('=== TIME CALCULATION DEBUG ===');
+        console.log('Start time:', gameState.startTime);
+        console.log('Current time:', Date.now());
+        console.log('Elapsed seconds:', elapsed);
+        console.log('Time string:', timeString);
 
         // Update completion modal with game stats (both modals)
         $('#completionTimeLoggedIn').text(timeString);
@@ -614,6 +609,14 @@
             words_found: gameState.foundWords.length,
             total_words: gameState.words.length
         };
+
+        // Debug: Log the gameData values
+        console.log('=== GAMEDATA DEBUG ===');
+        console.log('game_id:', window.gameId);
+        console.log('completion_time:', elapsed, '(type:', typeof elapsed, ')');
+        console.log('hints_used:', gameState.hintsUsed);
+        console.log('words_found:', gameState.foundWords.length);
+        console.log('total_words:', gameState.words.length);
 
         // Debug the gameData object
         console.log('Game data being sent:', gameData);
@@ -767,15 +770,7 @@
             }
         });
 
-        // Update hint button display
-        function updateHintButton() {
-            const remainingHints = 3 - gameState.hintsUsed;
-            $('#hintBtn').html(`<i class="bi bi-lightbulb me-2"></i>Hint (${remainingHints})`);
 
-            if (remainingHints === 0) {
-                $('#hintBtn').prop('disabled', true).addClass('disabled');
-            }
-        }
 
         // Reset selection button
         $('#resetBtn').on('click', function () {
@@ -806,6 +801,16 @@
         setupDevelopmentControls();
     }
 
+    // Update hint button display
+    function updateHintButton() {
+        const remainingHints = 3 - gameState.hintsUsed;
+        $('#hintBtn').html(`<i class="bi bi-lightbulb me-2"></i>Hint (${remainingHints})`);
+
+        if (remainingHints === 0) {
+            $('#hintBtn').prop('disabled', true).addClass('disabled');
+        }
+    }
+
     // Show a hint
     function showHint() {
         const unfoundWords = gameState.words.filter(word => !gameState.foundWords.includes(word));
@@ -817,31 +822,16 @@
         const placedWord = gameState.placedWords.find(pw => pw.word === randomWord);
         if (!placedWord) return;
 
-        // Calculate how many letters to highlight (first 2-3 letters)
-        const hintLength = Math.min(3, Math.max(2, Math.floor(randomWord.length * 0.3)));
-
-        // Get the cells to highlight (just the beginning of the word)
+        // Get just the first cell (first letter)
         const start = placedWord.start;
-        const end = placedWord.end;
-        const direction = placedWord.direction;
-
-        // Calculate the end position for the hint (just the first few letters)
-        const hintEnd = [
-            start[0] + (direction[0] * (hintLength - 1)),
-            start[1] + (direction[1] * (hintLength - 1))
-        ];
-
-        // Get cells for just the hint portion
-        const hintCells = getCellsInLine(start, hintEnd);
+        const hintCell = { r: start[0], c: start[1] };
 
         // Remove any existing hint highlights
         $('.word-grid td').removeClass('hint-highlight');
 
-        // Add hint highlight to the beginning of the word
-        hintCells.forEach(cell => {
-            const selector = `.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`;
-            $(selector).addClass('hint-highlight');
-        });
+        // Add hint highlight to just the first letter
+        const selector = `.word-grid td[data-r="${hintCell.r}"][data-c="${hintCell.c}"]`;
+        $(selector).addClass('hint-highlight');
 
         // Show a brief message about the hint
         const alert = $(`
