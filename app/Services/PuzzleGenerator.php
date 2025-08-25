@@ -67,7 +67,7 @@ class PuzzleGenerator
             // Get next word from pool
             $word = array_shift($wordPool);
             $wordLength = strlen(strtoupper(trim($word)));
-            $maxAllowedLength = (int)($size * 0.6); // 60% of grid size
+            $maxAllowedLength = (int)($size * 0.75); // 75% of grid size
             
             $this->logToFile("Processing word '{$word}' (length: {$wordLength}, max allowed: {$maxAllowedLength})");
             
@@ -158,7 +158,7 @@ class PuzzleGenerator
             
             // Log words that are filtered out for debugging
             if ($wordLength > $maxAllowedLength) {
-                $this->logToFile("Word '{$word}' (length: {$wordLength}) filtered out - exceeds {$maxAllowedLength} (60% of grid size {$gridSize})");
+                $this->logToFile("Word '{$word}' (length: {$wordLength}) filtered out - exceeds {$maxAllowedLength} (75% of grid size {$gridSize})");
             } elseif ($wordLength < 3) {
                 $this->logToFile("Word '{$word}' (length: {$wordLength}) filtered out - too short (minimum 3)");
             } elseif (!preg_match('/^[A-Z ]+$/', $word)) {
@@ -170,7 +170,7 @@ class PuzzleGenerator
                    preg_match('/^[A-Z ]+$/', $word);
         });
         
-        $this->logToFile("Filtered words: " . count($filteredWords) . " out of " . count($words) . " (grid size: {$gridSize}, max length: {$maxAllowedLength})");
+        $this->logToFile("Filtered words: " . count($filteredWords) . " out of " . count($words) . " (grid size: {$gridSize}, max length: " . (int)($gridSize * 0.75) . ")");
         
         return $filteredWords;
     }

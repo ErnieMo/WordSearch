@@ -123,9 +123,9 @@
         });
 
         // Auto-highlight words in development mode
-        if (window.APP_ENV === 'development') {
-            highlightAllPlacedWords();
-        }
+        // if (window.APP_ENV === 'development') {
+        //     highlightAllPlacedWords();
+        // }
     }
 
     // Highlight all placed words in development mode
@@ -598,6 +598,9 @@
             $('#completionModal').modal('hide');
             window.location.href = '/';
         });
+
+        // Setup development controls if in development mode
+        setupDevelopmentControls();
     }
 
     // Show a hint
@@ -726,6 +729,61 @@
         setTimeout(() => {
             alert.fadeOut(() => alert.remove());
         }, 4000);
+    }
+
+    // Development mode: Almost Complete button functionality
+    function setupDevelopmentControls() {
+        if (window.APP_ENV === 'development') {
+            // Show the development controls
+            $('#devControls').show();
+
+            // Setup Almost Complete button
+            $('#almostCompleteBtn').on('click', function () {
+                almostCompletePuzzle();
+            });
+        }
+    }
+
+    // Make puzzle almost complete (find all but first word)
+    function almostCompletePuzzle() {
+        if (!gameState.words || gameState.words.length === 0) {
+            showAlert('No words available', 'warning');
+            return;
+        }
+
+        // Get all words except the first one
+        const wordsToFind = gameState.words.slice(1);
+        console.log('Development: Making puzzle almost complete. Finding words:', wordsToFind);
+
+        // Find each word (except the first)
+        wordsToFind.forEach(word => {
+            if (gameState.placedWords && gameState.placedWords.length > 0) {
+                const placedWord = gameState.placedWords.find(pw => pw.word === word);
+                if (placedWord) {
+                    // Highlight the word in the grid
+                    const cells = getCellsInLine(placedWord.start, placedWord.end, placedWord.direction);
+                    cells.forEach(cell => {
+                        const $cell = $(`.word-grid td[data-r="${cell.r}"][data-c="${cell.c}"]`);
+                        if ($cell.length > 0) {
+                            $cell.addClass('found');
+                        }
+                    });
+
+                    // Mark word as found in the word list
+                    $(`.word-item[data-word="${word}"]`).addClass('found');
+                }
+            }
+        });
+
+        // Update game state
+        gameState.foundWords = wordsToFind;
+        updateProgress();
+
+        // Show completion message
+        showAlert(`Development: Puzzle almost complete! ${wordsToFind.length} out of ${gameState.words.length} words found.`, 'success');
+
+        // Update verification status to show progress
+        updateVerificationStatus(wordsToFind.length, gameState.words.length);
     }
 
 })();

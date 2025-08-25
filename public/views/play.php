@@ -47,6 +47,7 @@ if (empty($puzzleId)) {
                 </div>
                 
                 <!-- Verification Status -->
+                <!--
                 <div class="card mb-3">
                     <div class="card-header bg-warning text-dark">
                         <h6 class="mb-0"><i class="bi bi-check-circle me-2"></i>Verification</h6>
@@ -60,6 +61,7 @@ if (empty($puzzleId)) {
                         </div>
                     </div>
                 </div>
+                -->
                 
                 <!-- Progress -->
                 <div class="card mb-3">
@@ -160,6 +162,28 @@ if (empty($puzzleId)) {
     </div>
     
     <!-- Hidden puzzle data will be set after layout loads -->';
+    
+    // Add development-only button if in development mode
+    if (getenv('APP_ENV') === 'development') {
+        $pageContent = str_replace(
+            '<!-- Game Controls -->',
+            '<!-- Game Controls -->
+                <!-- Development Controls -->
+                <div class="card mb-3" id="devControls" style="display: none;">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bi bi-bug me-2"></i>Development Tools</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-success" id="almostCompleteBtn">
+                                <i class="bi bi-fast-forward me-2"></i>Almost Complete
+                            </button>
+                        </div>
+                    </div>
+                </div>',
+            $pageContent
+        );
+    }
 }
 
 include 'layout.php';

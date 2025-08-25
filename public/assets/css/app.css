@@ -297,8 +297,9 @@ footer {
 
 /* Development mode highlighting */
 .dev-highlight {
-    background-color: #fff3cd !important;
+    background-color: #fff3cd;
     /* Light yellow */
-    border: 1px solid #ffeaa7 !important;
-    box-shadow: inset 0 0 0 1px #fdcb6e !important;
+    border: 1px solid #ffeaa7;
+    box-shadow: inset 0 0 0 1px #fdcb6e;
+    color: #302400;
 }
