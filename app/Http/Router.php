@@ -337,10 +337,32 @@ class Router
                 return;
             }
             
-            // Return the puzzle data from the game record
+            // Parse words_found_data from JSON if it exists
+            $wordsFoundData = [];
+            if (!empty($game['words_found_data'])) {
+                try {
+                    $wordsFoundData = json_decode($game['words_found_data'], true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        error_log("JSON decode error for words_found_data: " . json_last_error_msg());
+                        $wordsFoundData = [];
+                    }
+                } catch (\Exception $e) {
+                    error_log("Error parsing words_found_data: " . $e->getMessage());
+                    $wordsFoundData = [];
+                }
+            }
+            
+            // Return the puzzle data with game progress
             $this->sendJsonResponse([
                 'success' => true,
-                'puzzle' => $game['puzzle_data']
+                'puzzle' => $game['puzzle_data'],
+                'game_progress' => [
+                    'words_found' => intval($game['words_found'] ?? 0),
+                    'total_words' => intval($game['total_words'] ?? 0),
+                    'words_found_data' => $wordsFoundData,
+                    'status' => $game['status'] ?? 'active',
+                    'hints_used' => intval($game['hints_used'] ?? 0)
+                ]
             ]);
         } catch (\Exception $e) {
             $this->sendErrorResponse($e->getMessage(), 500);
@@ -372,6 +394,7 @@ class Router
         $puzzleId = $data['puzzle_id'] ?? null;
         $wordsFound = $data['words_found'] ?? 0;
         $totalWords = $data['total_words'] ?? 0;
+        $wordsFoundData = $data['words_found_data'] ?? [];
         
         if (!$puzzleId) {
             $this->sendErrorResponse('Missing puzzle ID', 400);
@@ -386,10 +409,32 @@ class Router
                 return;
             }
             
+            // Skip update if no meaningful progress (new game or no words found)
+            if ($wordsFound === 0 && empty($wordsFoundData)) {
+                $this->sendJsonResponse([
+                    'success' => true,
+                    'message' => 'No progress to update (new game)',
+                    'progress' => [
+                        'words_found' => $wordsFound,
+                        'total_words' => $totalWords,
+                        'words_found_data' => $wordsFoundData
+                    ]
+                ]);
+                return;
+            }
+            
+            // Convert words_found_data array to JSON for database storage
+            $wordsFoundDataJson = json_encode($wordsFoundData);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("JSON encode error for words_found_data: " . json_last_error_msg());
+                $wordsFoundDataJson = '[]'; // Fallback to empty array as JSON
+            }
+            
             // Update the game record with current progress
             $updateData = [
                 'words_found' => $wordsFound,
-                'total_words' => $totalWords
+                'total_words' => $totalWords,
+                'words_found_data' => $wordsFoundDataJson
             ];
             
             $result = $this->gameService->updateGame($puzzleId, $updateData);
@@ -400,7 +445,8 @@ class Router
                     'message' => 'Progress updated successfully',
                     'progress' => [
                         'words_found' => $wordsFound,
-                        'total_words' => $totalWords
+                        'total_words' => $totalWords,
+                        'words_found_data' => $wordsFoundData
                     ]
                 ]);
             } else {
@@ -480,7 +526,7 @@ class Router
             $whereClause = implode(' AND ', $whereConditions);
             
             // Get total count for pagination
-            $countSql = "SELECT COUNT(*) FROM games g WHERE $whereClause";
+            $countSql = "SELECT COUNT(*) FROM wordsearch_games g WHERE $whereClause";
             $countStmt = $this->dbService->query($countSql, $params);
             $totalScores = $countStmt->fetchColumn();
             
@@ -497,7 +543,7 @@ class Router
                     g.total_words,
                     COALESCE(g.completed_at, g.end_time) as created_at,
                     COALESCE(u.username, 'Guest') as username
-                FROM games g
+                FROM wordsearch_games g
                 LEFT JOIN users u ON g.user_id = u.id
                 WHERE $whereClause
                 ORDER BY g.completion_time ASC, g.hints_used ASC, g.end_time DESC
@@ -554,7 +600,7 @@ class Router
                     g.words_found,
                     g.total_words,
                     COALESCE(g.completed_at, g.end_time) as created_at
-                FROM games g
+                FROM wordsearch_games g
                 WHERE g.user_id = :user_id AND g.status = 'completed'
                 ORDER BY g.end_time DESC
                 LIMIT 50
@@ -585,7 +631,7 @@ class Router
                     AVG(g.completion_time) as avg_time,
                     MIN(g.completion_time) as best_time,
                     AVG(g.hints_used) as avg_hints
-                FROM games g
+                FROM wordsearch_games g
                 WHERE g.status = 'completed' AND g.completion_time > 0
             ";
             
@@ -597,7 +643,7 @@ class Router
                 SELECT 
                     theme,
                     COUNT(*) as game_count
-                FROM games
+                FROM wordsearch_games
                 WHERE status = 'completed'
                 GROUP BY theme
                 ORDER BY game_count DESC
@@ -640,7 +686,7 @@ class Router
                     AVG(CASE WHEN g.completion_time > 0 THEN g.completion_time END) as avg_time,
                     SUM(g.hints_used) as total_hints,
                     COUNT(CASE WHEN g.status = 'completed' THEN 1 END) as completed_games
-                FROM games g
+                FROM wordsearch_games g
                 WHERE g.user_id = :user_id
             ";
             
@@ -655,7 +701,7 @@ class Router
                 SELECT 
                     difficulty,
                     MIN(completion_time) as best_time
-                FROM games
+                FROM wordsearch_games
                 WHERE user_id = :user_id AND status = 'completed' AND completion_time > 0
                 GROUP BY difficulty
             ";
@@ -734,12 +780,13 @@ class Router
                     g.status,
                     g.words_found,
                     g.total_words,
+                    g.words_found_data,
                     g.completion_time,
                     g.hints_used,
                     g.created_at,
                     g.end_time,
                     g.completed_at
-                FROM games g
+                FROM wordsearch_games g
                 WHERE g.user_id = :user_id
                 ORDER BY g.created_at DESC
                 LIMIT 100

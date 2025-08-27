@@ -107,7 +107,7 @@ try {
     
     // Games table
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS games (
+        CREATE TABLE IF NOT EXISTS wordsearch_games (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             puzzle_id VARCHAR(20) NOT NULL,
@@ -124,7 +124,7 @@ try {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ");
-    echo "✓ Games table created/verified.\n";
+    echo "✓ Wordsearch games table created/verified.\n";
     
     // Scores table
     $pdo->exec("
@@ -132,7 +132,7 @@ try {
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             username VARCHAR(50) NOT NULL,
-            game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+            game_id INTEGER REFERENCES wordsearch_games(id) ON DELETE CASCADE,
             puzzle_id VARCHAR(20) NOT NULL,
             theme VARCHAR(50) NOT NULL,
             difficulty VARCHAR(20) NOT NULL,
@@ -152,8 +152,8 @@ try {
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_puzzles_puzzle_id ON puzzles(puzzle_id)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_puzzles_theme ON puzzles(theme)");
-    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_games_user_id ON games(user_id)");
-    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_games_puzzle_id ON games(puzzle_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_wordsearch_games_user_id ON wordsearch_games(user_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_wordsearch_games_puzzle_id ON wordsearch_games(puzzle_id)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_scores_user_id ON scores(user_id)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_scores_theme ON scores(theme)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_scores_difficulty ON scores(difficulty)");
@@ -189,9 +189,9 @@ try {
     ");
     
     $pdo->exec("
-        DROP TRIGGER IF EXISTS update_games_updated_at ON games;
-        CREATE TRIGGER update_games_updated_at
-            BEFORE UPDATE ON games
+        DROP TRIGGER IF EXISTS update_wordsearch_games_updated_at ON wordsearch_games;
+        CREATE TRIGGER update_wordsearch_games_updated_at
+            BEFORE UPDATE ON wordsearch_games
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
     ");

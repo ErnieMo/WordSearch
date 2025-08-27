@@ -31,7 +31,7 @@ class GameService
             'status' => 'active'
         ];
 
-        return $this->db->insert('games', $data);
+        return $this->db->insert('wordsearch_games', $data);
     }
 
     /**
@@ -40,7 +40,7 @@ class GameService
     public function getGame(int $gameId): ?array
     {
         $game = $this->db->fetchOne(
-            "SELECT * FROM games WHERE id = :id",
+            "SELECT * FROM wordsearch_games WHERE id = :id",
             ['id' => $gameId]
         );
 
@@ -57,7 +57,7 @@ class GameService
     public function getGameByPuzzleId(string $puzzleId): ?array
     {
         $game = $this->db->fetchOne(
-            "SELECT * FROM games WHERE puzzle_id = :puzzle_id",
+            "SELECT * FROM wordsearch_games WHERE puzzle_id = :puzzle_id",
             ['puzzle_id' => $puzzleId]
         );
 
@@ -74,7 +74,7 @@ class GameService
     public function getActiveGame(int $userId): ?array
     {
         return $this->db->fetchOne(
-            "SELECT * FROM games WHERE user_id = :user_id AND status = 'active' ORDER BY start_time DESC LIMIT 1",
+            "SELECT * FROM wordsearch_games WHERE user_id = :user_id AND status = 'active' ORDER BY start_time DESC LIMIT 1",
             ['user_id' => $userId]
         );
     }
@@ -84,7 +84,7 @@ class GameService
      */
     public function updateGameProgress(int $gameId, array $data): bool
     {
-        $allowedFields = ['words_found', 'hints_used', 'status'];
+        $allowedFields = ['words_found', 'hints_used', 'status', 'words_found_data'];
         $updateData = [];
 
         foreach ($allowedFields as $field) {
@@ -97,7 +97,11 @@ class GameService
             return false;
         }
 
-        $this->db->update('games', $updateData, ['id' => $gameId]);
+        if (isset($data['words_found_data'])) {
+            $updateData['words_found_data'] = json_encode($data['words_found_data']);
+        }
+
+        $this->db->update('wordsearch_games', $updateData, ['id' => $gameId]);
         return true;
     }
 
@@ -112,7 +116,7 @@ class GameService
             'elapsed_time' => $elapsedTime
         ];
 
-        $this->db->update('games', $data, ['id' => $gameId]);
+        $this->db->update('wordsearch_games', $data, ['id' => $gameId]);
         return true;
     }
 
@@ -123,7 +127,7 @@ class GameService
     {
         $allowedFields = [
             'user_id', 'completion_time', 'hints_used', 'completed_at', 
-            'status', 'end_time', 'elapsed_time', 'words_found'
+            'status', 'end_time', 'elapsed_time', 'words_found', 'words_found_data'
         ];
         
         $updateData = [];
@@ -137,7 +141,7 @@ class GameService
             return false;
         }
 
-        $this->db->update('games', $updateData, ['puzzle_id' => $gameId]);
+        $this->db->update('wordsearch_games', $updateData, ['puzzle_id' => $gameId]);
         return true;
     }
 
@@ -147,7 +151,7 @@ class GameService
     public function getUserGameHistory(int $userId, int $limit = 10): array
     {
         return $this->db->fetchAll(
-            "SELECT * FROM games WHERE user_id = :user_id ORDER BY start_time DESC LIMIT :limit",
+            "SELECT * FROM wordsearch_games WHERE user_id = :user_id ORDER BY start_time DESC LIMIT :limit",
             ['user_id' => $userId, 'limit' => $limit]
         );
     }
@@ -164,7 +168,7 @@ class GameService
                 AVG(CASE WHEN status = 'completed' THEN elapsed_time END) as avg_time,
                 SUM(CASE WHEN status = 'completed' THEN words_found END) as total_words_found,
                 SUM(CASE WHEN status = 'completed' THEN hints_used END) as total_hints_used
-            FROM games 
+            FROM wordsearch_games 
             WHERE user_id = :user_id",
             ['user_id' => $userId]
         );
@@ -193,7 +197,7 @@ class GameService
                 u.username,
                 u.first_name,
                 u.last_name
-            FROM games g
+            FROM wordsearch_games g
             JOIN users u ON g.user_id = u.id
             WHERE g.theme = :theme 
             AND g.difficulty = :difficulty 

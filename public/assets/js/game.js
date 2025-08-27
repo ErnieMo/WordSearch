@@ -32,7 +32,6 @@
 
     // Check if user is logged in and set global variable
     function checkLoginStatus() {
-        console.log('checkLoginStatus called with serverAuthState:', window.serverAuthState);
         console.log('Current window.isLoggedIn value:', window.isLoggedIn);
 
         // If window.isLoggedIn is already set by server, respect that value
@@ -41,17 +40,10 @@
             return;
         }
 
-        // First check server-side authentication state (more reliable)
-        if (window.serverAuthState && window.serverAuthState.isLoggedIn) {
-            window.isLoggedIn = true;
-            console.log('User logged in via server session:', window.serverAuthState.username);
-        } else {
-            // Fallback to localStorage token check
-            const token = localStorage.getItem('authToken');
-            window.isLoggedIn = !!token;
-            console.log('User login status from localStorage:', window.isLoggedIn);
-        }
-
+        // Check localStorage token for authentication status
+        const token = localStorage.getItem('authToken');
+        window.isLoggedIn = !!token;
+        console.log('User login status from localStorage:', window.isLoggedIn);
         console.log('Final window.isLoggedIn value:', window.isLoggedIn);
     }
 
@@ -70,8 +62,30 @@
                     gameState.words = response.puzzle.words;
                     gameState.placedWords = response.puzzle.placed_words || [];
 
+                    // Restore game progress if available
+                    if (response.game_progress) {
+                        console.log('Restoring game progress:', response.game_progress);
+                        gameState.wordsFound = response.game_progress.words_found || 0;
+                        gameState.totalWords = response.game_progress.total_words || gameState.words.length;
+                        gameState.foundWords = response.game_progress.words_found_data || [];
+                        gameState.hintsUsed = response.game_progress.hints_used || 0;
+
+                        // Update timer if game was in progress
+                        if (response.game_progress.status === 'active' && gameState.wordsFound > 0) {
+                            // Restore timer state (you might want to store start time in database)
+                            console.log('Game was in progress, restoring state');
+                        }
+                    } else {
+                        // New game - initialize state
+                        gameState.wordsFound = 0;
+                        gameState.totalWords = gameState.words.length;
+                        gameState.foundWords = [];
+                        gameState.hintsUsed = 0;
+                    }
+
                     console.log('Game state after loading:', gameState);
                     console.log('Placed words loaded:', gameState.placedWords);
+                    console.log('Found words restored:', gameState.foundWords);
 
                     renderGame();
                     startTimer();
@@ -100,6 +114,46 @@
 
         // Verify all words are in the grid and highlight them
         verifyAllWords();
+
+        // Mark already found words and highlight them on the grid
+        markAlreadyFoundWords();
+    }
+
+    // Mark already found words and highlight them on the grid
+    function markAlreadyFoundWords() {
+        if (!gameState.foundWords || gameState.foundWords.length === 0) {
+            return; // No words to mark
+        }
+
+        console.log('Marking already found words:', gameState.foundWords);
+
+        // Mark words in the word list
+        gameState.foundWords.forEach(word => {
+            $(`.word-item[data-word="${word}"]`).addClass('found');
+        });
+
+        // Highlight found words on the grid
+        gameState.foundWords.forEach(word => {
+            const placedWord = gameState.placedWords.find(pw => pw.word === word);
+            if (placedWord) {
+                // Mark all cells of this word as found
+                const start = placedWord.start;
+                const end = placedWord.end;
+                const direction = placedWord.direction;
+
+                for (let i = 0; i < word.length; i++) {
+                    const r = start[0] + (direction[0] * i);
+                    const c = start[1] + (direction[1] * i);
+
+                    if (r >= 0 && r < gameState.grid.length && c >= 0 && c < gameState.grid[0].length) {
+                        $(`.word-grid td[data-r="${r}"][data-c="${c}"]`).addClass('found');
+                    }
+                }
+            }
+        });
+
+        // Update progress display
+        updateProgress();
     }
 
     // Update the grid size display in the title
@@ -559,7 +613,8 @@
         $('#progressBar').css('width', percentage + '%');
 
         // Update progress in backend if user is logged in
-        if (window.serverAuthState && window.serverAuthState.isLoggedIn && window.puzzleId) {
+        const token = localStorage.getItem('authToken');
+        if (token && window.puzzleId) {
             updateProgressInBackend(found, total);
         }
     }
@@ -568,6 +623,9 @@
     function updateProgressInBackend(wordsFound, totalWords) {
         const token = localStorage.getItem('authToken');
         if (!token) return;
+
+        // Get the actual words that were found
+        const wordsFoundData = gameState.foundWords || [];
 
         $.ajax({
             url: '/api/progress',
@@ -579,7 +637,8 @@
             data: JSON.stringify({
                 puzzle_id: window.puzzleId,
                 words_found: wordsFound,
-                total_words: totalWords
+                total_words: totalWords,
+                words_found_data: wordsFoundData
             }),
             success: function (response) {
                 if (response.success) {
@@ -672,14 +731,12 @@
 
         // Debug: Check if the values are what we expect
         console.log('Raw values:', {
-            windowIsLoggedIn: window.isLoggedIn,
-            serverAuthState: window.serverAuthState
+            windowIsLoggedIn: window.isLoggedIn
         });
 
         // Debug: Check what the modal should display
         console.log('=== MODAL DISPLAY CHECK ===');
         console.log('Current window.isLoggedIn:', window.isLoggedIn);
-        console.log('Current serverAuthState.isLoggedIn:', window.serverAuthState?.isLoggedIn);
         console.log('Modal should show:', window.isLoggedIn ? 'Score saved message' : 'Login message');
         console.log('=== END MODAL DISPLAY CHECK ===');
 
@@ -718,35 +775,7 @@
 
         const token = localStorage.getItem('authToken');
 
-        if (!token && window.serverAuthState && window.serverAuthState.isLoggedIn) {
-            // User is logged in via session but no token in localStorage
-            // This could happen if the page was refreshed or token expired
-            console.log('User logged in via session but no token, attempting to save score without token');
-
-            // Try to save score without token (server should recognize session)
-            $.ajax({
-                url: '/api/scores/save',
-                method: 'POST',
-                data: JSON.stringify(gameData),
-                contentType: 'application/json',
-                success: function (response) {
-                    console.log('API response received:', response);
-                    if (response.success) {
-                        console.log('Score saved successfully via session:', response);
-                        // PHP already shows the correct message, no need to change display
-                    } else {
-                        console.error('Failed to save score. Response:', response);
-                        console.error('Error field:', response.error);
-                        console.error('Full response object:', JSON.stringify(response));
-                        // PHP already shows the correct message, no need to change display
-                    }
-                },
-                error: function (xhr) {
-                    console.error('Error saving score via session:', xhr.responseText);
-                    // PHP already shows the correct message, no need to change display
-                }
-            });
-        } else if (token) {
+        if (token) {
             // User has token, use it for authentication
             $.ajax({
                 url: '/api/scores/save',

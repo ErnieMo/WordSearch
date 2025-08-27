@@ -232,9 +232,12 @@ function createGameHistoryRow(game, index) {
             </td>
             <td>${statusBadge}</td>
             <td>
-                <div class="d-flex align-items-center">
-                    ${progressBar}
-                    <small class="text-muted ms-2">${game.words_found}/${game.total_words}</small>
+                <div class="d-flex flex-column">
+                    <div class="d-flex align-items-center mb-1">
+                        ${progressBar}
+                        <small class="text-muted ms-2">${game.words_found}/${game.total_words}</small>
+                    </div>
+                    ${getWordsFoundDisplay(game)}
                 </div>
             </td>
             <td>
@@ -269,6 +272,37 @@ function getProgressBar(found, total) {
                  aria-valuemin="0" aria-valuemax="100"></div>
         </div>
     `;
+}
+
+function getWordsFoundDisplay(game) {
+    if (!game.words_found_data || game.words_found_data.length === 0) {
+        return `<small class="text-muted">No words found yet</small>`;
+    }
+    
+    // Parse the JSON data if it's a string
+    let wordsData = game.words_found_data;
+    if (typeof wordsData === 'string') {
+        try {
+            wordsData = JSON.parse(wordsData);
+        } catch (e) {
+            wordsData = [];
+        }
+    }
+    
+    if (wordsData.length === 0) {
+        return `<small class="text-muted">No words found yet</small>`;
+    }
+    
+    // Show first few words found
+    const displayWords = wordsData.slice(0, 3);
+    const remaining = wordsData.length - 3;
+    
+    let display = displayWords.join(', ');
+    if (remaining > 0) {
+        display += ` +${remaining} more`;
+    }
+    
+    return `<small class="text-success">${display}</small>`;
 }
 
 function getActionButtons(game) {

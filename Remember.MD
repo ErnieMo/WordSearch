@@ -206,7 +206,7 @@ CREATE TABLE puzzles (
 
 ### Games Table:
 ```sql
-CREATE TABLE games (
+CREATE TABLE wordsearch_games (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     puzzle_id VARCHAR(20) NOT NULL,
@@ -230,7 +230,7 @@ CREATE TABLE scores (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     username VARCHAR(50) NOT NULL,
-    game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
+    game_id INTEGER REFERENCES wordsearch_games(id) ON DELETE CASCADE,
     puzzle_id VARCHAR(20) NOT NULL,
     theme VARCHAR(50) NOT NULL,
     difficulty VARCHAR(20) NOT NULL,
