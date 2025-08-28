@@ -144,13 +144,13 @@ class AuthService
             }
 
             // Store user data in session for future requests
-            $this->setUserSession($user['id'], $user['username'], $user['first_name'], $user['last_name']);
+            $this->setUserSession($user['id'], $user['username'], $user['first_name'] ?? 'User', $user['last_name'] ?? 'Name');
 
             return [
                 'user_id' => $user['id'],
                 'username' => $user['username'],
-                'first_name' => $user['first_name'],
-                'last_name' => $user['last_name']
+                'first_name' => $user['first_name'] ?? 'User',
+                'last_name' => $user['last_name'] ?? 'Name'
             ];
         } catch (ExpiredException $e) {
             return null;
@@ -244,12 +244,12 @@ class AuthService
                 return array_merge([
                     'id' => $_SESSION['user_id'],
                     'username' => $_SESSION['username'],
-                    'first_name' => $_SESSION['first_name'],
-                    'last_name' => $_SESSION['last_name'],
-                    'default_theme' => $_SESSION['default_theme'],
-                    'default_level' => $_SESSION['default_level'],
-                    'default_diagonals' => $_SESSION['default_diagonals'],
-                    'default_reverse' => $_SESSION['default_reverse']
+                    'first_name' => $_SESSION['first_name'] ?? 'User',
+                    'last_name' => $_SESSION['last_name'] ?? 'Name',
+                    'default_theme' => $_SESSION['default_theme'] ?? 'animals',
+                    'default_level' => $_SESSION['default_level'] ?? 'medium',
+                    'default_diagonals' => $_SESSION['default_diagonals'] ?? true,
+                    'default_reverse' => $_SESSION['default_reverse'] ?? true
                 ], $additionalData);
             }
         }
