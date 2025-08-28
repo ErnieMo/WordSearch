@@ -94,8 +94,8 @@ class AuthService
         $this->setUserSession(
             $user['id'], 
             $user['username'], 
-            $user['first_name'], 
-            $user['last_name'],
+            $user['first_name'] ?? 'User', 
+            $user['last_name'] ?? 'Name',
             $user['default_theme'] ?? 'animals',
             $user['default_level'] ?? 'medium',
             $user['default_diagonals'] ?? true,
@@ -106,8 +106,8 @@ class AuthService
             'success' => true,
             'user_id' => $user['id'],
             'username' => $user['username'],
-            'first_name' => $user['first_name'],
-            'last_name' => $user['last_name'],
+            'first_name' => $user['first_name'] ?? 'User',
+            'last_name' => $user['last_name'] ?? 'Name',
             'default_theme' => $user['default_theme'] ?? 'animals',
             'default_level' => $user['default_level'] ?? 'medium',
             'default_diagonals' => $user['default_diagonals'] ?? true,
@@ -124,8 +124,8 @@ class AuthService
             return [
                 'user_id' => $_SESSION['user_id'],
                 'username' => $_SESSION['username'],
-                'first_name' => $_SESSION['first_name'],
-                'last_name' => $_SESSION['last_name']
+                'first_name' => $_SESSION['first_name'] ?? 'User',
+                'last_name' => $_SESSION['last_name'] ?? 'Name'
             ];
         }
 
@@ -303,8 +303,8 @@ class AuthService
             return [
                 'user_id' => $_SESSION['user_id'],
                 'username' => $_SESSION['username'],
-                'first_name' => $_SESSION['first_name'],
-                'last_name' => $_SESSION['last_name'],
+                'first_name' => $_SESSION['first_name'] ?? 'User',
+                'last_name' => $_SESSION['last_name'] ?? 'Name',
                 'default_theme' => $_SESSION['default_theme'] ?? 'animals',
                 'default_level' => $_SESSION['default_level'] ?? 'medium',
                 'default_diagonals' => $_SESSION['default_diagonals'] ?? true,
