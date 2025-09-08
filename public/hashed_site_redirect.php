@@ -88,6 +88,17 @@ try {
     );
     error_log("WordSearch hashed_site_redirect - Database update result: " . print_r($result, true));
     
+    // Logout current user - clear session variables
+    unset($_SESSION['user_id']);
+    unset($_SESSION['username']);
+    unset($_SESSION['first_name']);
+    unset($_SESSION['last_name']);
+    unset($_SESSION['default_theme']);
+    unset($_SESSION['default_level']);
+    unset($_SESSION['default_diagonals']);
+    unset($_SESSION['default_reverse']);
+    unset($_SESSION['authenticated']);
+    
     // Force redirect URL to always start from root path
     $baseUrl = $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
     if (isset($parsedUrl['port'])) {
@@ -96,6 +107,10 @@ try {
     
     // Build the redirect URL with access token, always starting from /
     $finalUrl = $baseUrl . '/?access_token=' . urlencode($accessToken);
+    
+    // Log the complete redirect URL
+    $logEntry = date('Y-m-d H:i:s') . " - WordSearch redirect to: " . $finalUrl . " (User ID: " . $user['user_id'] . ")" . PHP_EOL;
+    file_put_contents('/var/www/html/Logs/transfer_to_domains.log', $logEntry, FILE_APPEND | LOCK_EX);
     
     // Redirect to the target site
     header('Location: ' . $finalUrl);

@@ -117,14 +117,8 @@
                             <i class="bi bi-gear me-1"></i>Admin
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/admin/database">
-                                <i class="bi bi-database me-2"></i>Database
-                            </a></li>
-                            <li><a class="dropdown-item" href="/admin/testing">
-                                <i class="bi bi-bug me-2"></i>Testing Suite
-                            </a></li>
-                            <li><a class="dropdown-item" href="/admin/users">
-                                <i class="bi bi-people me-2"></i>Users
+                            <li><a class="dropdown-item" href="#" onclick="alert('Admin features coming soon!'); return false;">
+                                <i class="bi bi-tools me-2"></i>Admin Features (Coming Soon)
                             </a></li>
                         </ul>
                     </li>

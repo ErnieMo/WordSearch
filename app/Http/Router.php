@@ -351,9 +351,23 @@ class Router
             // Debug logging
             error_log("Puzzle generated - Grid size: {$gridSize}, Target words: {$wordCount}, Actual words: " . count($puzzle['words']));
             
+            // Validate user exists in database if user_id is provided
+            $userId = null;
+            if ($user && isset($user['user_id'])) {
+                // Check if user actually exists in database
+                $userCheck = $this->db->query("SELECT user_id FROM users WHERE user_id = ?", [$user['user_id']]);
+                if ($userCheck->rowCount() > 0) {
+                    $userId = $user['user_id'];
+                } else {
+                    error_log("User ID {$user['user_id']} not found in database, treating as guest user");
+                    // Clear invalid session data
+                    unset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['first_name'], $_SESSION['last_name']);
+                }
+            }
+            
             // Create game record in database (user_id may be null for guest users)
             $gameData = [
-                'user_id' => $user['user_id'] ?? null, // May be null for guest users
+                'user_id' => $userId, // Will be null if user doesn't exist or is guest
                 'puzzle_id' => $puzzle['id'],
                 'theme' => $themeId,
                 'difficulty' => $difficulty,
@@ -364,8 +378,8 @@ class Router
             
             $gameId = $this->gameService->createGame($gameData);
             
-            // Save guest user preferences for future visits
-            if (!$user) {
+            // Save guest user preferences for future visits (if no valid user)
+            if (!$userId) {
                 $_SESSION['guest_last_theme'] = $themeId;
                 $_SESSION['guest_last_difficulty'] = $difficulty;
                 $_SESSION['guest_last_diagonals'] = $options['diagonals'] ?? true;
