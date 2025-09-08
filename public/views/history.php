@@ -1,3 +1,7 @@
+<?php
+// Start session to access user data
+session_start();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,10 +20,29 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-search-heart me-2"></i>
-                Word Search
-            </a>
+            <div class="navbar-brand dropdown">
+                <a class="nav-link dropdown-toggle text-white text-decoration-none fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-search-heart me-2"></i>
+                    Word Search
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="/hashed_site_redirect.php?url=<?= ($_ENV['APP_ENV'] ?? 'development') === 'development' ? 'https://sudoku.dev.nofinway.com' : 'https://sudoku.nofinway.com' ?>">
+                            <i class="fas fa-puzzle-piece me-2"></i>Sudoku
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="<?= ($_ENV['APP_ENV'] ?? 'development') === 'development' ? 'https://wordsearch.dev.nofinway.com' : 'https://wordsearch.nofinway.com' ?>">
+                            <i class="fas fa-search me-2"></i>Word Search
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/hashed_site_redirect.php?url=<?= ($_ENV['APP_ENV'] ?? 'development') === 'development' ? 'https://tileslider.dev.nofinway.com' : 'https://tileslider.nofinway.com' ?>">
+                            <i class="fas fa-th me-2"></i>Tile Slider
+                        </a>
+                    </li>
+                </ul>
+            </div>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -44,6 +67,46 @@
                     </li>
                 </ul>
                 
+                <!-- Admin Navigation -->
+                <?php 
+                // Check if user is logged in and is admin
+                $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+                
+                // If logged in but isadmin not in session, fetch it from database
+                if ($isLoggedIn && !isset($_SESSION['isadmin'])) {
+                    try {
+                        $db = new \App\Services\DatabaseService();
+                        $user = $db->fetchOne(
+                            'SELECT isadmin FROM users WHERE id = :id',
+                            ['id' => $_SESSION['user_id']]
+                        );
+                        if ($user) {
+                            $_SESSION['isadmin'] = $user['isadmin'];
+                        }
+                    } catch (Exception $e) {
+                        error_log("Error fetching admin status: " . $e->getMessage());
+                    }
+                }
+                
+                if ($isLoggedIn && isset($_SESSION['isadmin']) && $_SESSION['isadmin']): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-gear me-1"></i>Admin
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/admin/database">
+                            <i class="bi bi-database me-2"></i>Database
+                        </a></li>
+                        <li><a class="dropdown-item" href="/admin/testing">
+                            <i class="bi bi-bug me-2"></i>Testing Suite
+                        </a></li>
+                        <li><a class="dropdown-item" href="/admin/users">
+                            <i class="bi bi-people me-2"></i>Users
+                        </a></li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                
                 <ul class="navbar-nav" id="authNav">
                     <!-- Guest Navigation -->
                     <li class="nav-item d-none" id="guestNav">
@@ -59,7 +122,7 @@
                     <li class="nav-item dropdown" id="userNav">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle me-1"></i>
-                            <span id="userDisplayName">User</span>
+                            <span id="userDisplayName"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></span>
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
