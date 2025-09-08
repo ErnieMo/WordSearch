@@ -492,7 +492,11 @@ class Router
             $user = $this->getAuthenticatedUser();
             error_log("handleUpdateProgress: Authentication check - user: " . ($user ? json_encode($user) : 'null'));
             if (!$user) {
+<<<<<<< HEAD
                 error_log("handleUpdateProgress: No authenticated user found", 3, '/var/www/html/Logs/wordsearch_debug.log');
+=======
+                error_log("handleUpdateProgress: No authenticated user found");
+>>>>>>> 5cbea1b (Sep 08, 2025 - 09:23 am - elapsed time)
                 $this->sendErrorResponse('Authentication required', 401);
                 return;
             }
@@ -530,7 +534,11 @@ class Router
                 $updateData['elapsed_time'] = (int)$elapsedTime;
                 error_log("handleUpdateProgress: Added elapsed_time to updateData: " . (int)$elapsedTime);
             } else {
+<<<<<<< HEAD
                 error_log("handleUpdateProgress: elapsed_time not provided in request data", 3, '/var/www/html/Logs/wordsearch_debug.log');
+=======
+                error_log("handleUpdateProgress: elapsed_time not provided in request data");
+>>>>>>> 5cbea1b (Sep 08, 2025 - 09:23 am - elapsed time)
             }
             
             // Debug logging
