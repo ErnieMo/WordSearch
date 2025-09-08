@@ -55,12 +55,13 @@ $pageContent = '
                                     <th>Status</th>
                                     <th>Progress</th>
                                     <th>Started</th>
+                                    <th>Time</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="historyTableBody">
                                 <tr id="loadingHistory">
-                                    <td colspan="7" class="text-center py-4">
+                                    <td colspan="8" class="text-center py-4">
                                         <div class="spinner-border text-primary" role="status">
                                             <span class="visually-hidden">Loading...</span>
                                         </div>
@@ -159,6 +160,7 @@ function createGameHistoryRow(game, index) {
     const statusBadge = getStatusBadge(game.status);
     const progressBar = getProgressBar(game.words_found, game.total_words);
     const startedDate = formatDate(game.created_at);
+    const gameTime = formatGameTime(game);
     const actions = getActionButtons(game);
     
     return $(`
@@ -192,6 +194,9 @@ function createGameHistoryRow(game, index) {
             </td>
             <td>
                 <small class="text-muted">${startedDate}</small>
+            </td>
+            <td>
+                <small class="text-muted">${gameTime}</small>
             </td>
             <td>${actions}</td>
         </tr>
@@ -297,10 +302,72 @@ function formatDate(dateString) {
     return date.toLocaleDateString();
 }
 
+function formatGameTime(game) {
+    // Check if game has completion time (for completed games)
+    if (game.completed_at && game.created_at) {
+        const startTime = new Date(game.created_at);
+        const endTime = new Date(game.completed_at);
+        const duration = Math.floor((endTime - startTime) / 1000); // Duration in seconds
+        
+        if (duration < 60) {
+            return `${duration}s`;
+        } else if (duration < 3600) {
+            const minutes = Math.floor(duration / 60);
+            const seconds = duration % 60;
+            return `${minutes}m ${seconds}s`;
+        } else {
+            const hours = Math.floor(duration / 3600);
+            const minutes = Math.floor((duration % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+    }
+    
+    // Check if game has elapsed_time field (for active games)
+    if (game.elapsed_time && game.elapsed_time > 0) {
+        const seconds = parseInt(game.elapsed_time);
+        if (seconds < 60) {
+            return `${seconds}s`;
+        } else if (seconds < 3600) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s`;
+        } else {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+    }
+    
+    // Check if game has time_spent field (legacy support)
+    if (game.time_spent) {
+        const seconds = parseInt(game.time_spent);
+        if (seconds < 60) {
+            return `${seconds}s`;
+        } else if (seconds < 3600) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s`;
+        } else {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+    }
+    
+    // If no time data available
+    if (game.status === 'completed') {
+        return '--';
+    } else if (game.status === 'active') {
+        return 'In Progress';
+    } else {
+        return '--';
+    }
+}
+
 function showNoAuthMessage() {
     $('#historyTableBody').html(`
         <tr>
-            <td colspan="7" class="text-center py-5">
+            <td colspan="8" class="text-center py-5">
                 <i class="bi bi-lock display-4 text-muted"></i>
                 <h4 class="text-muted mt-3">Authentication Required</h4>
                 <p class="text-muted">Please log in to view your game history.</p>
@@ -319,7 +386,7 @@ function showNoGamesMessage() {
 function showError(message) {
     $('#historyTableBody').html(`
         <tr>
-            <td colspan="7" class="text-center py-5">
+            <td colspan="8" class="text-center py-5">
                 <i class="bi bi-exclamation-triangle display-4 text-danger"></i>
                 <h4 class="text-danger mt-3">Error</h4>
                 <p class="text-muted">${message}</p>

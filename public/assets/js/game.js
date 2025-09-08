@@ -12,7 +12,8 @@
         selectedCells: [],
         startTime: null,
         timer: null,
-        hintsUsed: 0
+        hintsUsed: 0,
+        timerInitialized: false
     };
 
     // DOM ready
@@ -65,30 +66,37 @@
                     // Restore game progress if available
                     if (response.game_progress) {
                         console.log('Restoring game progress:', response.game_progress);
+                        console.log('Full game_progress object:', JSON.stringify(response.game_progress, null, 2));
                         gameState.wordsFound = response.game_progress.words_found || 0;
                         gameState.totalWords = response.game_progress.total_words || gameState.words.length;
                         gameState.foundWords = response.game_progress.words_found_data || [];
                         gameState.hintsUsed = response.game_progress.hints_used || 0;
 
-                        // Update timer if game was in progress
-                        if (response.game_progress.status === 'active' && gameState.wordsFound > 0) {
-                            // Restore timer state (you might want to store start time in database)
-                            console.log('Game was in progress, restoring state');
-                        }
+                        // Get elapsed time for timer restoration
+                        const elapsedTime = response.game_progress.elapsed_time || 0;
+                        console.log('Restoring timer with elapsed time:', elapsedTime, 'seconds');
+                        console.log('elapsed_time from game_progress:', response.game_progress.elapsed_time);
+                        console.log('About to call startTimer with elapsedTime:', elapsedTime);
+
+                        // Start timer first, then render game
+                        startTimer(elapsedTime);
+                        console.log('startTimer called, now calling renderGame');
+                        renderGame();
                     } else {
                         // New game - initialize state
                         gameState.wordsFound = 0;
                         gameState.totalWords = gameState.words.length;
                         gameState.foundWords = [];
                         gameState.hintsUsed = 0;
+
+                        // Start timer first, then render game
+                        startTimer(0);
+                        renderGame();
                     }
 
                     console.log('Game state after loading:', gameState);
                     console.log('Placed words loaded:', gameState.placedWords);
                     console.log('Found words restored:', gameState.foundWords);
-
-                    renderGame();
-                    startTimer();
 
                     // Initialize hint button after event listeners are set up
                     updateHintButton();
@@ -612,9 +620,9 @@
         $('#totalWords').text(total);
         $('#progressBar').css('width', percentage + '%');
 
-        // Update progress in backend if user is logged in
+        // Update progress in backend if user is logged in and timer is initialized
         const token = localStorage.getItem('authToken');
-        if (token && window.puzzleId) {
+        if (token && window.puzzleId && gameState.timerInitialized) {
             updateProgressInBackend(found, total);
         }
     }
@@ -622,10 +630,35 @@
     // Update progress in backend
     function updateProgressInBackend(wordsFound, totalWords) {
         const token = localStorage.getItem('authToken');
-        if (!token) return;
+        if (!token) {
+            console.log('updateProgressInBackend: No auth token, skipping');
+            return;
+        }
+
+        if (!gameState.timerInitialized) {
+            console.log('updateProgressInBackend: Timer not initialized yet, skipping');
+            return;
+        }
 
         // Get the actual words that were found
         const wordsFoundData = gameState.foundWords || [];
+
+        // Calculate elapsed time
+        let elapsedTime = 0;
+        if (gameState.startTime) {
+            elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+        }
+
+        console.log('updateProgressInBackend: Sending progress update', {
+            puzzle_id: window.puzzleId,
+            words_found: wordsFound,
+            total_words: totalWords,
+            elapsed_time: elapsedTime,
+            startTime: gameState.startTime,
+            currentTime: Date.now(),
+            timerInitialized: gameState.timerInitialized,
+            timeDifference: gameState.startTime ? (Date.now() - gameState.startTime) : 'no startTime'
+        });
 
         $.ajax({
             url: '/api/progress',
@@ -638,7 +671,8 @@
                 puzzle_id: window.puzzleId,
                 words_found: wordsFound,
                 total_words: totalWords,
-                words_found_data: wordsFoundData
+                words_found_data: wordsFoundData,
+                elapsed_time: elapsedTime
             }),
             success: function (response) {
                 if (response.success) {
@@ -652,9 +686,36 @@
     }
 
     // Start the game timer
-    function startTimer() {
-        gameState.startTime = Date.now();
+    function startTimer(initialElapsedTime = 0) {
+        console.log('startTimer function called with initialElapsedTime:', initialElapsedTime);
+
+        // Clear any existing timer
+        if (gameState.timer) {
+            clearInterval(gameState.timer);
+        }
+
+        const currentTime = Date.now();
+        // Set start time to current time minus the initial elapsed time
+        gameState.startTime = currentTime - (initialElapsedTime * 1000);
         gameState.timer = setInterval(updateTimer, 1000);
+
+        // Immediately update the timer display to show the initial elapsed time
+        updateTimer();
+
+        console.log('Timer started with initial elapsed time:', initialElapsedTime, 'seconds');
+        console.log('Current time:', currentTime);
+        console.log('Calculated startTime:', gameState.startTime);
+        console.log('Time difference should be:', initialElapsedTime * 1000, 'ms');
+
+        // Verify the calculation immediately
+        const testElapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+        console.log('Immediate elapsed time test:', testElapsed, 'seconds');
+
+        // Mark timer as initialized after a small delay to ensure everything is set up
+        setTimeout(() => {
+            gameState.timerInitialized = true;
+            console.log('Timer initialized flag set to:', gameState.timerInitialized);
+        }, 100);
     }
 
     // Update the timer display
@@ -861,6 +922,71 @@
 
         // Setup development controls if in development mode
         setupDevelopmentControls();
+
+        // Save progress when user leaves the page or page becomes hidden
+        $(window).on('beforeunload', function () {
+            saveProgressOnExit();
+        });
+
+        // Save progress when page becomes hidden (tab switch, minimize, etc.)
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                saveProgressOnExit();
+            }
+        });
+    }
+
+    // Save progress when user exits the page
+    function saveProgressOnExit() {
+        const token = localStorage.getItem('authToken');
+        if (!token || !window.puzzleId) {
+            console.log('saveProgressOnExit: No token or puzzleId, skipping');
+            return;
+        }
+
+        // Calculate elapsed time
+        let elapsedTime = 0;
+        if (gameState.startTime) {
+            elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+        }
+
+        // Get current progress
+        const wordsFound = gameState.foundWords.length;
+        const totalWords = gameState.words.length;
+        const wordsFoundData = gameState.foundWords || [];
+
+        console.log('saveProgressOnExit: Saving progress on exit', {
+            puzzle_id: window.puzzleId,
+            words_found: wordsFound,
+            total_words: totalWords,
+            elapsed_time: elapsedTime,
+            startTime: gameState.startTime,
+            currentTime: Date.now()
+        });
+
+        // Send synchronous request to save progress
+        $.ajax({
+            url: '/api/progress',
+            method: 'POST',
+            async: false, // Synchronous request to ensure it completes before page unload
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            data: JSON.stringify({
+                puzzle_id: window.puzzleId,
+                words_found: wordsFound,
+                total_words: totalWords,
+                words_found_data: wordsFoundData,
+                elapsed_time: elapsedTime
+            }),
+            success: function (response) {
+                console.log('Progress saved on exit:', response);
+            },
+            error: function (xhr) {
+                console.error('Failed to save progress on exit:', xhr.responseText);
+            }
+        });
     }
 
     // Update hint button display

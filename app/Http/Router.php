@@ -419,7 +419,8 @@ class Router
                     'total_words' => intval($game['total_words'] ?? 0),
                     'words_found_data' => $wordsFoundData,
                     'status' => $game['status'] ?? 'active',
-                    'hints_used' => intval($game['hints_used'] ?? 0)
+                    'hints_used' => intval($game['hints_used'] ?? 0),
+                    'elapsed_time' => intval($game['elapsed_time'] ?? 0)
                 ]
             ]);
         } catch (\Exception $e) {
@@ -453,6 +454,12 @@ class Router
         $wordsFound = $data['words_found'] ?? 0;
         $totalWords = $data['total_words'] ?? 0;
         $wordsFoundData = $data['words_found_data'] ?? [];
+        $elapsedTime = $data['elapsed_time'] ?? null;
+        
+        // Debug logging
+        error_log("handleUpdateProgress: Received data - puzzleId: $puzzleId, wordsFound: $wordsFound, elapsedTime: " . ($elapsedTime ?? 'null'));
+        error_log("handleUpdateProgress: Full data: " . json_encode($data));
+        error_log("handleUpdateProgress: elapsedTime type: " . gettype($elapsedTime) . ", value: " . var_export($elapsedTime, true));
         
         if (!$puzzleId) {
             $this->sendErrorResponse('Missing puzzle ID', 400);
@@ -462,7 +469,9 @@ class Router
         try {
             // Get authenticated user
             $user = $this->getAuthenticatedUser();
+            error_log("handleUpdateProgress: Authentication check - user: " . ($user ? json_encode($user) : 'null'));
             if (!$user) {
+                error_log("handleUpdateProgress: No authenticated user found");
                 $this->sendErrorResponse('Authentication required', 401);
                 return;
             }
@@ -495,7 +504,21 @@ class Router
                 'words_found_data' => $wordsFoundDataJson
             ];
             
+            // Include elapsed_time if provided (including 0)
+            if (isset($data['elapsed_time'])) {
+                $updateData['elapsed_time'] = (int)$elapsedTime;
+                error_log("handleUpdateProgress: Added elapsed_time to updateData: " . (int)$elapsedTime);
+            } else {
+                error_log("handleUpdateProgress: elapsed_time not provided in request data");
+            }
+            
+            // Debug logging
+            error_log("handleUpdateProgress: About to update game with data: " . json_encode($updateData));
+            
             $result = $this->gameService->updateGame($puzzleId, $updateData);
+            
+            // Debug logging
+            error_log("handleUpdateProgress: Update result: " . ($result ? 'success' : 'failed'));
             
             if ($result) {
                 $this->sendJsonResponse([
@@ -840,6 +863,7 @@ class Router
                     g.total_words,
                     g.words_found_data,
                     g.completion_time,
+                    g.elapsed_time,
                     g.hints_used,
                     g.created_at,
                     g.end_time,

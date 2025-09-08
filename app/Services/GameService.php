@@ -138,11 +138,18 @@ class GameService
         }
 
         if (empty($updateData)) {
+            error_log("GameService::updateGame: No update data provided");
             return false;
         }
 
-        $this->db->update('wordsearch_games', $updateData, ['puzzle_id' => $gameId]);
-        return true;
+        error_log("GameService::updateGame: Updating game $gameId with data: " . json_encode($updateData));
+        
+        $result = $this->db->update('wordsearch_games', $updateData, ['puzzle_id' => $gameId]);
+        
+        error_log("GameService::updateGame: Update result: " . ($result ? 'success' : 'failed'));
+        
+        // Convert integer result to boolean (0 = false, >0 = true)
+        return $result > 0;
     }
 
     /**
