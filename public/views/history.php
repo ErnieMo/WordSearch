@@ -1,7 +1,3 @@
-<?php
-// Start session to access user data
-session_start();
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,8 +5,12 @@ session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game History - Word Search Game</title>
     
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap 5 JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Custom CSS -->
@@ -65,47 +65,47 @@ session_start();
                     <li class="nav-item">
                         <a class="nav-link active" href="/history"><i class="bi bi-clock-history me-1"></i>History</a>
                     </li>
-                </ul>
-                
-                <!-- Admin Navigation -->
-                <?php 
-                // Check if user is logged in and is admin
-                $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
-                
-                // If logged in but isadmin not in session, fetch it from database
-                if ($isLoggedIn && !isset($_SESSION['isadmin'])) {
-                    try {
-                        $db = new \App\Services\DatabaseService();
-                        $user = $db->fetchOne(
-                            'SELECT isadmin FROM users WHERE id = :id',
-                            ['id' => $_SESSION['user_id']]
-                        );
-                        if ($user) {
-                            $_SESSION['isadmin'] = $user['isadmin'];
+                    
+                    <!-- Admin Navigation -->
+                    <?php 
+                    // Check if user is logged in and is admin
+                    $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+                    
+                    // If logged in but isadmin not in session, fetch it from database
+                    if ($isLoggedIn && !isset($_SESSION['isadmin'])) {
+                        try {
+                            $db = new \App\Services\DatabaseService();
+                            $user = $db->fetchOne(
+                                'SELECT isadmin FROM users WHERE id = :id',
+                                ['id' => $_SESSION['user_id']]
+                            );
+                            if ($user) {
+                                $_SESSION['isadmin'] = $user['isadmin'];
+                            }
+                        } catch (Exception $e) {
+                            error_log("Error fetching admin status: " . $e->getMessage());
                         }
-                    } catch (Exception $e) {
-                        error_log("Error fetching admin status: " . $e->getMessage());
                     }
-                }
-                
-                if ($isLoggedIn && isset($_SESSION['isadmin']) && $_SESSION['isadmin']): ?>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-gear me-1"></i>Admin
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/admin/database">
-                            <i class="bi bi-database me-2"></i>Database
-                        </a></li>
-                        <li><a class="dropdown-item" href="/admin/testing">
-                            <i class="bi bi-bug me-2"></i>Testing Suite
-                        </a></li>
-                        <li><a class="dropdown-item" href="/admin/users">
-                            <i class="bi bi-people me-2"></i>Users
-                        </a></li>
-                    </ul>
-                </li>
-                <?php endif; ?>
+                    
+                    if ($isLoggedIn && isset($_SESSION['isadmin']) && $_SESSION['isadmin']): ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear me-1"></i>Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/admin/database">
+                                <i class="bi bi-database me-2"></i>Database
+                            </a></li>
+                            <li><a class="dropdown-item" href="/admin/testing">
+                                <i class="bi bi-bug me-2"></i>Testing Suite
+                            </a></li>
+                            <li><a class="dropdown-item" href="/admin/users">
+                                <i class="bi bi-people me-2"></i>Users
+                            </a></li>
+                        </ul>
+                    </li>
+                    <?php endif; ?>
+                </ul>
                 
                 <ul class="navbar-nav" id="authNav">
                     <!-- Guest Navigation -->
@@ -219,8 +219,9 @@ function setupHistoryEventListeners() {
 }
 
 function loadGameHistory() {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
+    // Check if user is logged in via PHP session
+    const isLoggedIn = <?= json_encode($isLoggedIn) ?>;
+    if (!isLoggedIn) {
         showNoAuthMessage();
         return;
     }
@@ -231,9 +232,6 @@ function loadGameHistory() {
     $.ajax({
         url: '/api/history',
         method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        },
         success: function(response) {
             $('#loadingHistory').hide();
             
@@ -445,10 +443,6 @@ function showError(message) {
 }
 </script>
 
-    <!-- Bootstrap 5 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     
     <!-- Login Modal -->
@@ -533,16 +527,15 @@ function showError(message) {
         });
         
         function checkAuthStatus() {
-            const token = localStorage.getItem('authToken');
-            if (token) {
+            // Check if user is logged in via PHP session
+            const isLoggedIn = <?= json_encode($isLoggedIn) ?>;
+            
+            if (isLoggedIn) {
                 // User is logged in
                 $('#guestNav').addClass('d-none');
                 $('#userNav').removeClass('d-none');
                 
-                // Get user info from token
-                getUserInfo(token);
-                
-                // Load game history
+                // Load game history using session-based auth
                 loadGameHistory();
             } else {
                 // User is not logged in
@@ -552,33 +545,13 @@ function showError(message) {
             }
         }
         
-        function getUserInfo(token) {
-            $.ajax({
-                url: '/api/auth/profile',
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                success: function(response) {
-                    if (response.success && response.profile) {
-                        const username = response.profile.username || response.profile.first_name || 'User';
-                        $('#userDisplayName').text(username);
-                    } else {
-                        $('#userDisplayName').text('User');
-                    }
-                },
-                error: function(xhr) {
-                    console.error('Failed to get user info:', xhr.responseText);
-                    $('#userDisplayName').text('User');
-                }
-            });
-        }
+        // User info is already set from PHP session in the HTML
         
         // Handle logout
         $('#logoutBtn').on('click', function(e) {
             e.preventDefault();
-            localStorage.removeItem('authToken');
-            window.location.href = '/';
+            // Redirect to logout page to clear PHP session
+            window.location.href = '/logout';
         });
         
         // Handle login form
