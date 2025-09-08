@@ -36,42 +36,24 @@ $pageContent = '
                 <h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Select Difficulty</h5>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyEasy" value="easy"' . ($difficulty === 'easy' ? ' checked' : '') . '>
-                            <label class="form-check-label" for="difficultyEasy">
-                                <strong>Easy</strong><br>
-                                <small class="text-muted">10×10 grid, simple words</small>
-                            </label>
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="d-grid gap-3">
+                            <button type="button" class="btn btn-lg difficulty-btn" data-difficulty="easy" style="background-color: #28a745; color: white; border: none; border-radius: 12px; padding: 15px 20px; font-weight: 600;">
+                                <i class="bi bi-star-fill me-2"></i>Easy (10×10)
+                            </button>
+                            <button type="button" class="btn btn-lg difficulty-btn" data-difficulty="medium" style="background-color: #ffc107; color: black; border: none; border-radius: 12px; padding: 15px 20px; font-weight: 600;">
+                                <i class="bi bi-star-fill me-2"></i>Medium (15×15)
+                            </button>
+                            <button type="button" class="btn btn-lg difficulty-btn" data-difficulty="hard" style="background-color: #dc3545; color: white; border: none; border-radius: 12px; padding: 15px 20px; font-weight: 600;">
+                                <i class="bi bi-star-fill me-2"></i>Hard (20×20)
+                            </button>
+                            <button type="button" class="btn btn-lg difficulty-btn" data-difficulty="expert" style="background-color: #343a40; color: white; border: none; border-radius: 12px; padding: 15px 20px; font-weight: 600;">
+                                <i class="bi bi-star-fill me-2"></i>Expert (25×25)
+                            </button>
                         </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyMedium" value="medium"' . ($difficulty === 'medium' ? ' checked' : '') . '>
-                            <label class="form-check-label" for="difficultyMedium">
-                                <strong>Medium</strong><br>
-                                <small class="text-muted">15×15 grid, diagonal words</small>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyHard" value="hard"' . ($difficulty === 'hard' ? ' checked' : '') . '>
-                            <label class="form-check-label" for="difficultyHard">
-                                <strong>Hard</strong><br>
-                                <small class="text-muted">20×20 grid, reverse words</small>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="difficulty" id="difficultyExpert" value="expert"' . ($difficulty === 'expert' ? ' checked' : '') . '>
-                            <label class="form-check-label" for="difficultyExpert">
-                                <strong>Expert</strong><br>
-                                <small class="text-muted">25×25 grid, maximum words</small>
-                            </label>
-                        </div>
+                        <!-- Hidden input to store selected difficulty -->
+                        <input type="hidden" name="difficulty" id="selectedDifficulty" value="' . $difficulty . '">
                     </div>
                 </div>
             </div>
@@ -166,3 +148,54 @@ $pageContent = '
 
 include 'layout.php';
 ?>
+
+<script>
+$(document).ready(function() {
+    // Initialize difficulty selection
+    const currentDifficulty = $('#selectedDifficulty').val();
+    $('.difficulty-btn').removeClass('selected');
+    $(`.difficulty-btn[data-difficulty="${currentDifficulty}"]`).addClass('selected');
+    
+    // Handle difficulty button clicks
+    $('.difficulty-btn').on('click', function() {
+        const difficulty = $(this).data('difficulty');
+        
+        // Update hidden input
+        $('#selectedDifficulty').val(difficulty);
+        
+        // Update button states
+        $('.difficulty-btn').removeClass('selected');
+        $(this).addClass('selected');
+        
+        console.log('Difficulty selected:', difficulty);
+    });
+});
+</script>
+
+<style>
+.difficulty-btn {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.difficulty-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.difficulty-btn.selected {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    border: 3px solid #007bff !important;
+}
+
+.difficulty-btn.selected::before {
+    content: "✓";
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 18px;
+    font-weight: bold;
+}
+</style>

@@ -35,7 +35,7 @@
         // We just need to sync the JavaScript state with the UI
 
         // Get the currently selected difficulty from the UI
-        const selectedDifficulty = $('input[name="difficulty"]:checked').val();
+        const selectedDifficulty = $('#selectedDifficulty').val();
         if (selectedDifficulty) {
             console.log('Difficulty pre-selected by server:', selectedDifficulty);
         }
@@ -52,35 +52,56 @@
         localStorage.setItem('guestLastReverse', reverseEnabled);
     }
 
-    // Handle play link click - use user defaults if available
+    // Handle play link click - show modal for game selection
     function handlePlayLink(e) {
         e.preventDefault();
 
-        const defaultTheme = localStorage.getItem('userDefaultTheme') || 'animals';
-        const defaultLevel = localStorage.getItem('userDefaultLevel') || 'medium';
-        const defaultDiagonals = localStorage.getItem('userDefaultDiagonals');
-        const defaultReverse = localStorage.getItem('userDefaultReverse');
+        // Get user's last used theme and difficulty from session/localStorage
+        const lastTheme = localStorage.getItem('userDefaultTheme') ||
+            localStorage.getItem('guestLastTheme') ||
+            'animals';
+        const lastDifficulty = localStorage.getItem('userDefaultLevel') ||
+            localStorage.getItem('guestLastDifficulty') ||
+            'medium';
 
-        // Set the defaults if not already set
-        if (!selectedTheme) {
-            $(`.theme-card[data-theme-id="${defaultTheme}"]`).addClass('selected');
-            selectedTheme = defaultTheme;
+        // Set default theme in modal dropdown
+        $('#modalThemeSelect').val(lastTheme);
+        $('#modalSelectedTheme').val(lastTheme);
+
+        // Set default difficulty in modal
+        $('.modal-difficulty-btn').removeClass('selected');
+        $(`.modal-difficulty-btn[data-difficulty="${lastDifficulty}"]`).addClass('selected');
+        $('#modalSelectedDifficulty').val(lastDifficulty);
+
+        // Show the modal
+        $('#playGameModal').modal('show');
+    }
+
+    // Start game from modal selection
+    function startGameFromModal() {
+        const theme = $('#modalSelectedTheme').val();
+        const difficulty = $('#modalSelectedDifficulty').val();
+
+        console.log('startGameFromModal - Theme:', theme, 'Difficulty:', difficulty);
+
+        if (!theme || !difficulty) {
+            showAlert('Please select both theme and difficulty', 'warning');
+            return;
         }
 
-        if (!$('input[name="difficulty"]:checked').length) {
-            $(`input[name="difficulty"][value="${defaultLevel}"]`).prop('checked', true);
+        // Validate that a difficulty is actually selected
+        if (!$('.modal-difficulty-btn.selected').length) {
+            showAlert('Please select a difficulty level', 'warning');
+            return;
         }
 
-        if (defaultDiagonals !== null && !$('#diagonalsEnabled').is(':checked')) {
-            $('#diagonalsEnabled').prop('checked', defaultDiagonals === 'true');
-        }
+        // Close the modal
+        $('#playGameModal').modal('hide');
 
-        if (defaultReverse !== null && !$('#reverseEnabled').is(':checked')) {
-            $('#reverseEnabled').prop('checked', defaultReverse === 'true');
-        }
+        console.log('Modal selections - Theme:', theme, 'Difficulty:', difficulty);
 
-        // Start the game with current selection
-        startNewGame();
+        // Start the game with the selected values
+        startNewGame(theme, difficulty);
     }
 
     // Setup event listeners
@@ -91,15 +112,47 @@
         $('#logoutBtn').on('click', handleLogout);
 
         // Game controls
-        $('#startGameBtn').on('click', startNewGame);
+        $('#startGameBtn').on('click', function () {
+            const theme = selectedTheme;
+            const difficulty = $('#selectedDifficulty').val();
+            startNewGame(theme, difficulty);
+        });
         $('#playLink').on('click', handlePlayLink);
 
         // Theme selection
         $(document).on('click', '.theme-card', selectTheme);
 
         // Difficulty and options
-        $('input[name="difficulty"]').on('change', updateGameOptions);
+        $('.difficulty-btn').on('click', function () {
+            const difficulty = $(this).data('difficulty');
+            $('#selectedDifficulty').val(difficulty);
+            updateGameOptions();
+        });
         $('#diagonalsEnabled, #reverseEnabled').on('change', updateGameOptions);
+
+        // Modal functionality
+        $('#modalThemeSelect').on('change', function () {
+            $('#modalSelectedTheme').val($(this).val());
+        });
+
+        $('.modal-difficulty-btn').on('click', function () {
+            const difficulty = $(this).data('difficulty');
+            $('.modal-difficulty-btn').removeClass('selected');
+            $(this).addClass('selected');
+            $('#modalSelectedDifficulty').val(difficulty);
+            console.log('Modal difficulty selected:', difficulty);
+            console.log('Modal selected difficulty value:', $('#modalSelectedDifficulty').val());
+        });
+
+        // Handle modal game start
+        $('.modal-difficulty-btn').on('dblclick', function () {
+            startGameFromModal();
+        });
+
+        // Play Game button in modal
+        $('#modalPlayBtn').on('click', function () {
+            startGameFromModal();
+        });
     }
 
     // Authentication functions
@@ -402,8 +455,12 @@
     }
 
     // Game functions
-    function startNewGame() {
-        if (!selectedTheme) {
+    function startNewGame(theme = null, difficulty = null) {
+        // Use provided parameters or fall back to UI values
+        const selectedThemeValue = theme || selectedTheme;
+        const selectedDifficultyValue = difficulty || $('#selectedDifficulty').val();
+
+        if (!selectedThemeValue) {
             showAlert('Please select a theme first', 'warning');
             return;
         }
@@ -411,18 +468,19 @@
         // Get authentication token (optional - users can play without logging in)
         const token = localStorage.getItem('authToken');
 
-        const difficulty = $('input[name="difficulty"]:checked').val();
         const diagonals = $('#diagonalsEnabled').is(':checked');
         const reverse = $('#reverseEnabled').is(':checked');
+
+        console.log('startNewGame - Theme:', selectedThemeValue, 'Difficulty:', selectedDifficultyValue, 'Diagonals:', diagonals, 'Reverse:', reverse);
 
         // Show loading modal
         $('#loadingModal').modal('show');
 
         // Send theme ID and options directly to backend for word selection and randomization
         const puzzleData = {
-            theme_id: selectedTheme,
+            theme_id: selectedThemeValue,
             options: {
-                difficulty: difficulty,
+                difficulty: selectedDifficultyValue,
                 diagonals: diagonals,
                 reverse: reverse
             }

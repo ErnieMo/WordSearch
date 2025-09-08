@@ -243,11 +243,95 @@
         </div>
     </div>
 
+    <!-- Play Game Modal -->
+    <div class="modal fade" id="playGameModal" tabindex="-1" aria-labelledby="playGameModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="playGameModalLabel">
+                        <i class="bi bi-plus-circle me-2"></i>New Game
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Select difficulty level:</p>
+                    
+                    <!-- Theme Selection -->
+                    <div class="mb-4">
+                        <label for="modalThemeSelect" class="form-label">Choose Theme:</label>
+                        <select class="form-select" id="modalThemeSelect">
+                            <option value="animals">Animals - Wildlife and pets</option>
+                            <option value="automotive">Automotive - Cars, trucks, and vehicles</option>
+                            <option value="food">Food - Delicious dishes and ingredients</option>
+                            <option value="geography">Geography - Countries and cities</option>
+                            <option value="medical">Medical - Healthcare and medicine</option>
+                            <option value="technology">Technology - Computers and gadgets</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Difficulty Selection -->
+                    <div class="d-grid gap-3">
+                        <button type="button" class="btn btn-lg modal-difficulty-btn" data-difficulty="easy" style="background-color: #28a745; color: white; border: none; border-radius: 8px; padding: 12px 16px; font-weight: 600;">
+                            <i class="bi bi-star-fill me-2"></i>Easy (10×10)
+                        </button>
+                        <button type="button" class="btn btn-lg modal-difficulty-btn" data-difficulty="medium" style="background-color: #ffc107; color: black; border: none; border-radius: 8px; padding: 12px 16px; font-weight: 600;">
+                            <i class="bi bi-star-fill me-2"></i>Medium (15×15)
+                        </button>
+                        <button type="button" class="btn btn-lg modal-difficulty-btn" data-difficulty="hard" style="background-color: #dc3545; color: white; border: none; border-radius: 8px; padding: 12px 16px; font-weight: 600;">
+                            <i class="bi bi-star-fill me-2"></i>Hard (20×20)
+                        </button>
+                        <button type="button" class="btn btn-lg modal-difficulty-btn" data-difficulty="expert" style="background-color: #343a40; color: white; border: none; border-radius: 8px; padding: 12px 16px; font-weight: 600;">
+                            <i class="bi bi-star-fill me-2"></i>Expert (25×25)
+                        </button>
+                    </div>
+                    
+                    <!-- Hidden inputs -->
+                    <input type="hidden" id="modalSelectedTheme" value="">
+                    <input type="hidden" id="modalSelectedDifficulty" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="modalPlayBtn">
+                        <i class="bi bi-play-circle me-2"></i>Play Game
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- Custom JS -->
     <script src="/assets/js/app.js"></script>
+    
+    <style>
+    .modal-difficulty-btn {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .modal-difficulty-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .modal-difficulty-btn.selected {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        border: 3px solid #007bff !important;
+    }
+    
+    .modal-difficulty-btn.selected::after {
+        content: "✓";
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    </style>
 </body>
 </html>
