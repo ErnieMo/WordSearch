@@ -20,9 +20,9 @@ class DatabaseService
         $this->config = [
             'host' => $_ENV['DB_HOST'] ?? 'localhost',
             'port' => $_ENV['DB_PORT'] ?? '5432',
-            'database' => $_ENV['DB_DATABASE'] ?? 'wordsearch_dev',
-            'username' => $_ENV['DB_USERNAME'] ?? 'wordsearch_dev_user',
-            'password' => $_ENV['DB_PASSWORD'] ?? 'your_password'
+            'database' => $_ENV['DB_DATABASE'] ?? 'nofinway_dev',
+            'username' => $_ENV['DB_USERNAME'] ?? 'postgres',
+            'password' => $_ENV['DB_PASSWORD'] ?? ''
         ];
     }
 

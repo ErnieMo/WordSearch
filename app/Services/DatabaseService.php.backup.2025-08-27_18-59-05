@@ -1,0 +1,796 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Sudoku\Services;
+
+use Exception;
+use InvalidArgumentException;
+use PDO;
+use PDOException;
+
+/**
+ * Sudoku - Database Service
+ * 
+ * Handles PostgreSQL connections and database operations for the Sudoku.
+ * 
+ * @author Sudoku Game Team
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
+
+// Enable error logging for debugging
+if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
+// error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../logs/included_files.log');
+}
+
+/**
+ * Database service for PostgreSQL operations
+ */
+class DatabaseService
+{
+    private ?PDO $connection = null;
+    private bool $postgresql_available = false;
+    private array $demo_data = [];
+    private string $log_file;
+
+    public function __construct()
+    {
+        $this->log_file = __DIR__ . '/../../logs/database.log';
+        $this->connect();
+    }
+
+    /**
+     * Connect to PostgreSQL
+     */
+    private function connect(): void
+    {
+        // Check if PostgreSQL extension is available
+        if (!extension_loaded('pgsql')) {
+            $this->postgresql_available = false;
+        // error_log("\n\n" . 'PostgreSQL extension not available - running in demo mode');
+            $this->initializeDemoData();
+            return;
+        }
+        
+        try {
+            $dsn = sprintf(
+                'pgsql:host=%s;port=%s;dbname=%s',
+                $_ENV['DB_HOST'] ?? 'localhost',
+                $_ENV['DB_PORT'] ?? '5432',
+                $_ENV['DB_DATABASE'] ?? 'sudoku_game'
+            );
+            
+            $this->connection = new PDO(
+                $dsn,
+                $_ENV['DB_USERNAME'] ?? 'sudoku_user',
+                $_ENV['DB_PASSWORD'] ?? '',
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false
+                ]
+            );
+            
+            $this->postgresql_available = true;
+            // $this->createTables();
+        } catch (PDOException $e) {
+        // error_log("\n\n" . 'PostgreSQL connection failed: ' . $e->getMessage());
+            $this->postgresql_available = false;
+            $this->initializeDemoData();
+        }
+    }
+
+    /**
+     * Create database tables if they don't exist
+     */
+    private function createTables(): void
+    {
+        if (!$this->postgresql_available) {
+            return;
+        }
+
+        $tables = [
+            'users' => "
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    email_verified BOOLEAN DEFAULT FALSE,
+                    reset_token VARCHAR(255),
+                    reset_expires TIMESTAMP
+                )
+            ",
+            'games' => "
+                CREATE TABLE IF NOT EXISTS games (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    difficulty VARCHAR(20) NOT NULL,
+                    original_board JSONB NOT NULL,
+                    current_board JSONB NOT NULL,
+                    solution JSONB NOT NULL,
+                    status VARCHAR(20) DEFAULT 'active',
+                    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    elapsed_time INTEGER DEFAULT 0,
+                    hints_used INTEGER DEFAULT 0,
+                    errors_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ",
+            'scores' => "
+                CREATE TABLE IF NOT EXISTS scores (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    username VARCHAR(50) NOT NULL,
+                    game_id INTEGER REFERENCES games(id),
+                    difficulty VARCHAR(20) NOT NULL,
+                    elapsed_time INTEGER,
+                    hints_used INTEGER DEFAULT 0,
+                    errors_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            "
+        ];
+
+        foreach ($tables as $table_name => $sql) {
+            try {
+                $this->connection->exec($sql);
+                $this->log('CREATE_TABLE', $table_name, [], 'success');
+            } catch (PDOException $e) {
+                $this->log('CREATE_TABLE', $table_name, [], 'error: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Initialize demo data for when PostgreSQL is not available
+     */
+    private function initializeDemoData(): void
+    {
+        $this->demo_data = [
+            'users' => [
+                [
+                    'id' => 1,
+                    'username' => 'demo',
+                    'email' => 'demo@example.com',
+                    'password' => password_hash('password123', PASSWORD_DEFAULT),
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                    'is_active' => true,
+                    'email_verified' => true
+                ]
+            ],
+            'games' => [],
+            'scores' => []
+        ];
+    }
+
+    /**
+     * Log database operations
+     */
+    private function log(string $operation, string $table, array $data = [], ?string $result = null): void
+    {
+        // Check if debug logging is enabled
+        if (($_ENV['APP_DEBUG'] ?? 'false') !== 'true') {
+            return;
+        }
+
+        $timestamp = date('Y-m-d H:i:s');
+        $mode = $this->postgresql_available ? 'PostgreSQL' : 'Demo';
+        $log_entry = [
+            'timestamp' => $timestamp,
+            'operation' => $operation,
+            'table' => $table,
+            'mode' => $mode,
+            'data' => $data,
+            'result' => $result
+        ];
+        
+        $log_line = json_encode($log_entry) . PHP_EOL;
+        file_put_contents($this->log_file, $log_line, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Create a date object
+     */
+    public function createDate(): string
+    {
+        return date('Y-m-d H:i:s');
+    }
+
+    /**
+     * Check if PostgreSQL is available
+     */
+    public function isPostgreSQLAvailable(): bool
+    {
+        return $this->postgresql_available;
+    }
+
+    /**
+     * Insert a record
+     */
+    public function insertOne(string $table, array $data): int
+    {
+        $this->log('INSERT', $table, $data);
+        
+        // Sanitize timestamp fields to prevent PostgreSQL errors
+        $sanitized_data = $this->sanitizeTimestampFields($data);
+        if ($sanitized_data !== $data) {
+            $this->log('INSERT_TIMESTAMP_SANITIZATION', $table, [
+                'original_data' => $data,
+                'sanitized_data' => $sanitized_data,
+                'changes_made' => 'Empty timestamp strings converted to NULL'
+            ]);
+            $data = $sanitized_data;
+        }
+        
+        if (!$this->postgresql_available) {
+            // Demo mode: store in memory and return mock ID
+            $id = count($this->demo_data[$table] ?? []) + 1;
+            $data['id'] = $id;
+            $this->demo_data[$table][] = $data;
+            $this->log('INSERT_RESULT', $table, [], (string) $id);
+            return $id;
+        }
+        
+        // Filter out null values but keep empty strings and booleans
+        $filtered_data = array_filter($data, function($value) {
+            return $value !== null;
+        });
+        
+        // Convert boolean values to PostgreSQL format
+        foreach ($filtered_data as $key => $value) {
+            if (is_bool($value)) {
+                $filtered_data[$key] = $value ? 'true' : 'false';
+            }
+        }
+        
+        // Debug log the filtered data
+        $this->log('INSERT_DEBUG', $table, ['filtered_data' => $filtered_data], 'data being inserted');
+        
+        $columns = implode(', ', array_keys($filtered_data));
+        $placeholders = ':' . implode(', :', array_keys($filtered_data));
+        
+        $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders}) RETURNING id";
+        $stmt = $this->connection->prepare($sql);
+        
+        try {
+            $stmt->execute($filtered_data);
+            $id = $stmt->fetchColumn();
+            $this->log('INSERT_RESULT', $table, [], $id ? (string) $id : 'null');
+            return $id;
+        } catch (PDOException $e) {
+            // If the error is about boolean conversion but the insert might have succeeded,
+            // try to get the last inserted ID
+            if (strpos($e->getMessage(), 'invalid input syntax for type boolean') !== false) {
+                $this->log('INSERT_BOOLEAN_ERROR', $table, [], 'boolean conversion error: ' . $e->getMessage());
+                
+                // Try to get the last inserted ID as a fallback
+                try {
+                    $last_id_stmt = $this->connection->query("SELECT lastval()");
+                    $id = $last_id_stmt->fetchColumn();
+                    if ($id) {
+                        $this->log('INSERT_FALLBACK_SUCCESS', $table, [], 'fallback ID: ' . $id);
+                        return $id;
+                    }
+                } catch (PDOException $fallback_e) {
+                    $this->log('INSERT_FALLBACK_FAILED', $table, [], 'fallback failed: ' . $fallback_e->getMessage());
+                }
+            }
+            
+            // Re-throw the original exception
+            throw $e;
+        }
+    }
+
+    /**
+     * Find records
+     */
+    public function find(string $table, array $where = [], array $options = []): array
+    {
+        $this->log('FIND', $table, ['where' => $where, 'options' => $options]);
+        
+        if (!$this->postgresql_available) {
+            // Demo mode: return all records (no filtering for simplicity)
+            $records = $this->demo_data[$table] ?? [];
+            $this->log('FIND_RESULT', $table, [], 'count: ' . count($records));
+            return $records;
+        }
+        
+        $sql = "SELECT * FROM {$table}";
+        $params = [];
+        
+        if (!empty($where)) {
+            $conditions = [];
+            foreach ($where as $key => $value) {
+                $conditions[] = "{$key} = :{$key}";
+                $params[$key] = $value;
+            }
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+        
+        if (isset($options['order_by'])) {
+            $sql .= ' ORDER BY ' . $options['order_by'];
+        }
+        
+        if (isset($options['limit'])) {
+            $sql .= ' LIMIT ' . (int) $options['limit'];
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $records = $stmt->fetchAll();
+        
+        $this->log('FIND_RESULT', $table, [], 'count: ' . count($records));
+        return $records;
+    }
+
+    /**
+     * Find one record
+     */
+    public function findOne(string $table, array $where = [], array $options = []): ?array
+    {
+        // Validate table exists before proceeding
+        if (!$this->tableExists($table)) {
+            $this->log('FIND_ONE_TABLE_VALIDATION_FAILED', $table, [
+                'error_message' => "Table '{$table}' does not exist",
+                'where' => $where,
+                'options' => $options
+            ]);
+            throw new InvalidArgumentException("Table '{$table}' does not exist");
+        }
+        
+        $this->log('FIND_ONE', $table, ['where' => $where, 'options' => $options]);
+        
+        if (!$this->postgresql_available) {
+            // Demo mode: filter records based on criteria
+            $records = $this->demo_data[$table] ?? [];
+            
+            foreach ($records as $record) {
+                $matches = true;
+                foreach ($where as $key => $value) {
+                    if (strpos($key, ' ') !== false) {
+                        // Handle operators with spaces like "id !=", "age >=", etc.
+                        $parts = explode(' ', $key, 2);
+                        $field_name = $parts[0];
+                        $operator = $parts[1];
+                        
+                        if (!isset($record[$field_name])) {
+                            $matches = false;
+                            break;
+                        }
+                        
+                        switch ($operator) {
+                            case '!=':
+                                if ($record[$field_name] == $value) {
+                                    $matches = false;
+                                }
+                                break;
+                            case '>':
+                                if ($record[$field_name] <= $value) {
+                                    $matches = false;
+                                }
+                                break;
+                            case '>=':
+                                if ($record[$field_name] < $value) {
+                                    $matches = false;
+                                }
+                                break;
+                            case '<':
+                                if ($record[$field_name] >= $value) {
+                                    $matches = false;
+                                }
+                                break;
+                            case '<=':
+                                if ($record[$field_name] > $value) {
+                                    $matches = false;
+                                }
+                                break;
+                            default:
+                                $matches = false;
+                                break;
+                        }
+                        
+                        if (!$matches) break;
+                    } else {
+                        // Handle simple equality
+                        if (!isset($record[$key]) || $record[$key] !== $value) {
+                            $matches = false;
+                            break;
+                        }
+                    }
+                }
+                if ($matches) {
+                    $this->log('FIND_ONE_RESULT', $table, [], 'found');
+                    return $record;
+                }
+            }
+            $this->log('FIND_ONE_RESULT', $table, [], 'not_found');
+            return null;
+        }
+        
+        $sql = "SELECT * FROM {$table}";
+        $params = [];
+        
+        if (!empty($where)) {
+            $conditions = [];
+            foreach ($where as $key => $value) {
+                if (is_array($value) && isset($value['>'])) {
+                    // Handle comparison operators like ['>' => $value]
+                    $conditions[] = "{$key} > :{$key}";
+                    // Convert Unix timestamp to PostgreSQL timestamp format
+                    if (is_numeric($value['>'])) {
+                        $params[$key] = date('Y-m-d H:i:s', $value['>']);
+                    } else {
+                        $params[$key] = $value['>'];
+                    }
+                } elseif (strpos($key, ' ') !== false) {
+                    // Handle operators with spaces like "id !=", "age >=", etc.
+                    $parts = explode(' ', $key, 2);
+                    $field_name = $parts[0];
+                    $operator = $parts[1];
+                    $param_name = $field_name . '_' . uniqid();
+                    
+                    $conditions[] = "{$field_name} {$operator} :{$param_name}";
+                    $params[$param_name] = $value;
+                } else {
+                    // Handle simple equality
+                    $conditions[] = "{$key} = :{$key}";
+                    $params[$key] = $value;
+                }
+            }
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+        
+        if (isset($options['order_by'])) {
+            $sql .= ' ORDER BY ' . $options['order_by'];
+        }
+        
+        $sql .= ' LIMIT 1';
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $record = $stmt->fetch();
+        
+        $this->log('FIND_ONE_RESULT', $table, [], $record ? 'found' : 'not_found');
+        return $record ?: null;
+    }
+
+    /**
+     * Check if a table exists in the database
+     */
+    private function tableExists(string $table): bool
+    {
+        if (!$this->postgresql_available) {
+            // In demo mode, check if we have demo data for this table
+            return isset($this->demo_data[$table]);
+        }
+        
+        try {
+            $stmt = $this->connection->query("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{$table}')");
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            $this->log('TABLE_EXISTS_CHECK_ERROR', $table, [
+                'error_message' => $e->getMessage(),
+                'error_code' => $e->getCode()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Update records
+     */
+    public function updateOne(string $table, array $where, array $data): bool
+    {
+        // Validate table exists before proceeding
+        if (!$this->tableExists($table)) {
+            $this->log('UPDATE_TABLE_VALIDATION_FAILED', $table, [
+                'error_message' => "Table '{$table}' does not exist",
+                'where_conditions' => $where,
+                'data_to_update' => array_keys($data)
+            ]);
+            throw new InvalidArgumentException("Table '{$table}' does not exist");
+        }
+        
+        $this->log('UPDATE_START', $table, [
+            'where_conditions' => $where,
+            'data_to_update' => array_keys($data),
+            'data_values' => $data,
+            'timestamp' => date('Y-m-d H:i:s'),
+            'request_id' => uniqid('update_', true)
+        ]);
+        
+        // Special logging for user updates
+        if ($table === 'users') {
+            $this->log('USER_UPDATE_DETAILS', $table, [
+                'user_id' => $where['id'] ?? 'unknown',
+                'fields_being_updated' => array_keys($data),
+                'has_password_change' => isset($data['password']),
+                'has_email_change' => isset($data['email']),
+                'has_username_change' => isset($data['username']),
+                'update_source' => $this->getUpdateSource()
+            ]);
+        }
+        
+        // Sanitize timestamp fields to prevent PostgreSQL errors
+        $sanitized_data = $this->sanitizeTimestampFields($data);
+        if ($sanitized_data !== $data) {
+            $this->log('UPDATE_TIMESTAMP_SANITIZATION', $table, [
+                'original_data' => $data,
+                'sanitized_data' => $sanitized_data,
+                'changes_made' => 'Empty timestamp strings converted to NULL'
+            ]);
+            $data = $sanitized_data;
+        }
+        
+        if (!$this->postgresql_available) {
+            $this->log('UPDATE_MODE', $table, ['mode' => 'Demo', 'reason' => 'PostgreSQL not available']);
+            
+            // Demo mode: update in memory
+            $records = $this->demo_data[$table] ?? [];
+            $this->log('DEMO_UPDATE_ATTEMPT', $table, [
+                'total_records_in_table' => count($records),
+                'searching_for' => $where
+            ]);
+            
+            foreach ($records as $index => &$record) {
+                $matches = true;
+                foreach ($where as $key => $value) {
+                    if (!isset($record[$key]) || $record[$key] !== $value) {
+                        $matches = false;
+                        break;
+                    }
+                }
+                if ($matches) {
+                    $this->log('DEMO_RECORD_FOUND', $table, [
+                        'record_index' => $index,
+                        'original_data' => $record,
+                        'new_data' => $data
+                    ]);
+                    
+                    $record = array_merge($record, $data);
+                    $this->log('UPDATE_RESULT', $table, [], 'success');
+                    $this->log('UPDATE_COMPLETE', $table, [
+                        'mode' => 'Demo',
+                        'records_affected' => 1,
+                        'final_record_state' => $record
+                    ]);
+                    return true;
+                }
+            }
+            
+            $this->log('UPDATE_RESULT', $table, [], 'not_found');
+            $this->log('UPDATE_COMPLETE', $table, [
+                'mode' => 'Demo',
+                'records_affected' => 0,
+                'reason' => 'No matching records found'
+            ]);
+            return false;
+        }
+        
+        $this->log('UPDATE_MODE', $table, ['mode' => 'PostgreSQL', 'connection_status' => 'active']);
+        
+        $set_clauses = [];
+        $params = [];
+        
+        foreach ($data as $key => $value) {
+            $set_clauses[] = "{$key} = :set_{$key}";
+            $params["set_{$key}"] = $value;
+        }
+        
+        $where_clauses = [];
+        foreach ($where as $key => $value) {
+            $where_clauses[] = "{$key} = :where_{$key}";
+            $params["where_{$key}"] = $value;
+        }
+        
+        $sql = "UPDATE {$table} SET " . implode(', ', $set_clauses) . 
+               " WHERE " . implode(' AND ', $where_clauses);
+        
+        $this->log('UPDATE_SQL_PREPARATION', $table, [
+            'sql_query' => $sql,
+            'parameters_count' => count($params),
+            'parameter_keys' => array_keys($params)
+        ]);
+        
+        try {
+            $stmt = $this->connection->prepare($sql);
+            $this->log('UPDATE_STATEMENT_PREPARED', $table, ['status' => 'success']);
+            
+            $result = $stmt->execute($params);
+            $this->log('UPDATE_EXECUTION_RESULT', $table, [
+                'execution_success' => $result,
+                'rows_affected' => $stmt->rowCount()
+            ]);
+            
+            $this->log('UPDATE_RESULT', $table, [], $result ? 'success' : 'failed');
+            
+            if ($result) {
+                $this->log('UPDATE_COMPLETE', $table, [
+                    'mode' => 'PostgreSQL',
+                    'records_affected' => $stmt->rowCount(),
+                    'execution_time' => microtime(true) - $_SERVER['REQUEST_TIME_FLOAT']
+                ]);
+            }
+            
+            return $result;
+        } catch (Exception $e) {
+            $this->log('UPDATE_EXCEPTION', $table, [
+                'error_message' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->log('UPDATE_RESULT', $table, [], 'exception_occurred');
+            $this->log('UPDATE_COMPLETE', $table, [
+                'mode' => 'PostgreSQL',
+                'records_affected' => 0,
+                'reason' => 'Exception occurred: ' . $e->getMessage()
+            ]);
+            
+            return false;
+        }
+    }
+
+    /**
+     * Delete records
+     */
+    public function deleteOne(string $table, array $where): bool
+    {
+        // Validate table exists before proceeding
+        if (!$this->tableExists($table)) {
+            $this->log('DELETE_TABLE_VALIDATION_FAILED', $table, [
+                'error_message' => "Table '{$table}' does not exist",
+                'where' => $where
+            ]);
+            throw new InvalidArgumentException("Table '{$table}' does not exist");
+        }
+        
+        $this->log('DELETE', $table, ['where' => $where]);
+        
+        if (!$this->postgresql_available) {
+            // Demo mode: delete from memory
+            $records = $this->demo_data[$table] ?? [];
+            foreach ($records as $key => $record) {
+                $matches = true;
+                foreach ($where as $field => $value) {
+                    if (!isset($record[$field]) || $record[$field] !== $value) {
+                        $matches = false;
+                        break;
+                    }
+                }
+                if ($matches) {
+                    unset($this->demo_data[$table][$key]);
+                    $this->log('DELETE_RESULT', $table, [], 'success');
+                    return true;
+                }
+            }
+            $this->log('DELETE_RESULT', $table, [], 'not_found');
+            return false;
+        }
+        
+        $where_clauses = [];
+        $params = [];
+        
+        foreach ($where as $key => $value) {
+            $where_clauses[] = "{$key} = :{$key}";
+            $params[$key] = $value;
+        }
+        
+        $sql = "DELETE FROM {$table} WHERE " . implode(' AND ', $where_clauses);
+        $stmt = $this->connection->prepare($sql);
+        $result = $stmt->execute($params);
+        
+        $this->log('DELETE_RESULT', $table, [], $result ? 'success' : 'failed');
+        return $result;
+    }
+
+    /**
+     * Count records
+     */
+    public function count(string $table, array $where = []): int
+    {
+        $this->log('COUNT', $table, ['where' => $where]);
+        
+        if (!$this->postgresql_available) {
+            $records = $this->demo_data[$table] ?? [];
+            $count = count($records);
+            $this->log('COUNT_RESULT', $table, [], (string) $count);
+            return $count;
+        }
+        
+        $sql = "SELECT COUNT(*) FROM {$table}";
+        $params = [];
+        
+        if (!empty($where)) {
+            $where_clauses = [];
+            foreach ($where as $key => $value) {
+                $where_clauses[] = "{$key} = :{$key}";
+                $params[$key] = $value;
+            }
+            $sql .= ' WHERE ' . implode(' AND ', $where_clauses);
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $count = $stmt->fetchColumn();
+        
+        $this->log('COUNT_RESULT', $table, [], (string) $count);
+        return (int) $count;
+    }
+
+    /**
+     * Execute raw SQL query
+     */
+    public function query(string $sql, array $params = []): array
+    {
+        $this->log('QUERY', 'raw', ['sql' => $sql, 'params' => $params]);
+        
+        if (!$this->postgresql_available) {
+            $this->log('QUERY_RESULT', 'raw', [], 'not_available');
+            return [];
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $results = $stmt->fetchAll();
+        
+        $this->log('QUERY_RESULT', 'raw', [], 'count: ' . count($results));
+        return $results;
+    }
+
+    /**
+     * Get the source of the update operation for logging purposes
+     */
+    private function getUpdateSource(): string
+    {
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5);
+        
+        foreach ($backtrace as $trace) {
+            if (isset($trace['class']) && strpos($trace['class'], 'Controller') !== false) {
+                return $trace['class'] . '::' . $trace['function'];
+            }
+        }
+        
+        return 'Unknown';
+    }
+
+    /**
+     * Sanitize timestamp fields by converting empty strings to NULL
+     * This prevents PostgreSQL errors when empty strings are sent for timestamp fields
+     */
+    private function sanitizeTimestampFields(array $data): array
+    {
+        $timestamp_fields = [
+            'created_at', 'updated_at', 'reset_expires', 'start_time', 'end_time',
+            'last_login', 'email_verified_at', 'deleted_at'
+        ];
+        
+        $sanitized = $data;
+        $changes_made = [];
+        
+        foreach ($timestamp_fields as $field) {
+            if (isset($sanitized[$field]) && $sanitized[$field] === '') {
+                $sanitized[$field] = null;
+                $changes_made[$field] = 'empty_string_to_null';
+            }
+        }
+        
+        if (!empty($changes_made)) {
+            $this->log('TIMESTAMP_SANITIZATION_APPLIED', 'system', [
+                'changes_made' => $changes_made,
+                'fields_affected' => array_keys($changes_made)
+            ]);
+        }
+        
+        return $sanitized;
+    }
+} 

@@ -18,6 +18,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="/assets/css/app.css" rel="stylesheet">
     
@@ -27,21 +29,33 @@
     </script>
 </head>
 <body>
-    <?php if (getenv('APP_ENV') === 'development'): ?>
-    <!-- Development Environment Banner -->
-    <div class="alert alert-warning alert-dismissible fade show m-0 text-center" role="alert">
-        <strong>Development Environment</strong> - This is a <?php echo getenv('APP_ENV'); ?> build of the Word Search application.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    <?php endif; ?>
 
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="bi bi-search-heart me-2"></i>
-                Word Search
-            </a>
+            <div class="navbar-brand dropdown">
+                <a class="nav-link dropdown-toggle text-white text-decoration-none fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-search-heart me-2"></i>
+                    Word Search
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="/hashed_site_redirect.php?url=<?= ($_ENV['APP_ENV'] ?? 'development') === 'development' ? 'https://sudoku.dev.nofinway.com' : 'https://sudoku.nofinway.com' ?>">
+                            <i class="fas fa-puzzle-piece me-2"></i>Sudoku
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="<?= ($_ENV['APP_ENV'] ?? 'development') === 'development' ? 'https://wordsearch.dev.nofinway.com' : 'https://wordsearch.nofinway.com' ?>">
+                            <i class="fas fa-search me-2"></i>Word Search
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/hashed_site_redirect.php?url=<?= ($_ENV['APP_ENV'] ?? 'development') === 'development' ? 'https://tileslider.dev.nofinway.com' : 'https://tileslider.nofinway.com' ?>">
+                            <i class="fas fa-th me-2"></i>Tile Slider
+                        </a>
+                    </li>
+                </ul>
+            </div>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -78,7 +92,43 @@
                     error_log("=== END LAYOUT SESSION DEBUG ===");
                     
                     $isLoggedIn = isset($_SESSION['user_id']) && isset($_SESSION['username']);
+                    
+                    // If logged in but isadmin not in session, fetch it from database
+                    if ($isLoggedIn && !isset($_SESSION['isadmin'])) {
+                        try {
+                            $db = new \App\Services\DatabaseService();
+                            $user = $db->fetchOne(
+                                'SELECT isadmin FROM users WHERE id = :id',
+                                ['id' => $_SESSION['user_id']]
+                            );
+                            if ($user) {
+                                $_SESSION['isadmin'] = $user['isadmin'];
+                            }
+                        } catch (Exception $e) {
+                            error_log("Error fetching admin status: " . $e->getMessage());
+                        }
+                    }
                     ?>
+                    
+                    <!-- Admin Navigation -->
+                    <?php if ($isLoggedIn && isset($_SESSION['isadmin']) && $_SESSION['isadmin']): ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear me-1"></i>Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/admin/database">
+                                <i class="bi bi-database me-2"></i>Database
+                            </a></li>
+                            <li><a class="dropdown-item" href="/admin/testing">
+                                <i class="bi bi-bug me-2"></i>Testing Suite
+                            </a></li>
+                            <li><a class="dropdown-item" href="/admin/users">
+                                <i class="bi bi-people me-2"></i>Users
+                            </a></li>
+                        </ul>
+                    </li>
+                    <?php endif; ?>
                     
                     <!-- Guest Navigation -->
                     <li class="nav-item <?= $isLoggedIn ? 'd-none' : '' ?>" id="guestNav">

@@ -65,14 +65,14 @@ class AuthService
         ];
     }
 
-    public function login(string $usernameOrEmail, string $password): array
+    public function login(string $usernameOrEmail, string $password, bool $skipPasswordVerification = false): array
     {
         // Log the search parameters
         error_log("Login attempt - searching for user with: usernameOrEmail = '{$usernameOrEmail}'");
         
         // Find user by username OR email
         $user = $this->db->fetchOne(
-            "SELECT id, username, password, first_name, last_name, default_theme, default_level, default_diagonals, default_reverse FROM users WHERE (username = :username OR email = :email) AND is_active = true",
+            "SELECT id, username, password, first_name, last_name, default_theme, default_level, default_diagonals, default_reverse, isadmin FROM users WHERE (username = :username OR email = :email) AND is_active = true",
             ['username' => $usernameOrEmail, 'email' => $usernameOrEmail]
         );
         
@@ -83,7 +83,11 @@ class AuthService
             error_log("No user found with usernameOrEmail = '{$usernameOrEmail}'");
         }
 
-        if (!$user || !password_verify($password, $user['password'])) {
+        if (!$user) {
+            throw new \InvalidArgumentException('Invalid username/email or password');
+        }
+
+        if (!$skipPasswordVerification && !password_verify($password, $user['password'])) {
             throw new \InvalidArgumentException('Invalid username/email or password');
         }
 
@@ -99,7 +103,8 @@ class AuthService
             $user['default_theme'] ?? 'animals',
             $user['default_level'] ?? 'medium',
             $user['default_diagonals'] ?? true,
-            $user['default_reverse'] ?? true
+            $user['default_reverse'] ?? true,
+            $user['isadmin'] ?? false
         );
 
         return [
@@ -325,7 +330,8 @@ class AuthService
         string $defaultTheme = 'animals',
         string $defaultLevel = 'medium',
         bool $defaultDiagonals = true,
-        bool $defaultReverse = true
+        bool $defaultReverse = true,
+        bool $isadmin = false
     ): void {
         $_SESSION['user_id'] = $userId;
         $_SESSION['username'] = $username;
@@ -335,6 +341,7 @@ class AuthService
         $_SESSION['default_level'] = $defaultLevel;
         $_SESSION['default_diagonals'] = $defaultDiagonals;
         $_SESSION['default_reverse'] = $defaultReverse;
+        $_SESSION['isadmin'] = $isadmin;
         $_SESSION['last_activity'] = time();
     }
 

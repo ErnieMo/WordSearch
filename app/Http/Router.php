@@ -36,6 +36,7 @@ class Router
         // Authentication routes
         $this->addRoute('POST', '/api/auth/register', [$this, 'handleRegister']);
         $this->addRoute('POST', '/api/auth/login', [$this, 'handleLogin']);
+        $this->addRoute('GET', '/logout', [$this, 'handleLogoutPage']);
         $this->addRoute('POST', '/api/auth/logout', [$this, 'handleLogout']);
         $this->addRoute('GET', '/api/auth/profile', [$this, 'handleGetProfile']);
         $this->addRoute('POST', '/api/auth/profile/update', [$this, 'handleUpdateProfile']);
@@ -65,6 +66,12 @@ class Router
         $this->addRoute('GET', '/scores', [$this, 'handleScoresPage']);
         $this->addRoute('GET', '/history', [$this, 'handleHistoryPage']);
         $this->addRoute('GET', '/profile', [$this, 'handleProfilePage']);
+        
+        // Transfer routes
+        $this->addRoute('GET', '/transfer-login', [$this, 'handleTransferLogin']);
+        $this->addRoute('POST', '/api/transfer/generate-token', [$this, 'handleGenerateTransferToken']);
+        $this->addRoute('GET', '/api/transfer/token-info', [$this, 'handleGetTokenInfo']);
+        $this->addRoute('GET', '/api/session/info', [$this, 'handleGetSessionInfo']);
     }
 
     public function addRoute(string $method, string $path, callable $handler): void
@@ -178,6 +185,57 @@ class Router
         } catch (\Exception $e) {
             error_log("Login failed with error: " . $e->getMessage());
             $this->sendErrorResponse($e->getMessage(), 400);
+        }
+    }
+
+    public function handleLogoutPage(): void
+    {
+        try {
+            // Get current session ID before destroying
+            $oldSessionId = session_id();
+            
+            // Clear all session data
+            $_SESSION = [];
+            
+            // Destroy the session cookie
+            if (ini_get("session.use_cookies")) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 42000,
+                    $params["path"], $params["domain"],
+                    $params["secure"], $params["httponly"]
+                );
+            }
+            
+            // Destroy the session
+            session_destroy();
+            
+            // If using file-based sessions, manually delete the session file
+            if (ini_get("session.save_handler") === "files") {
+                $sessionFile = ini_get("session.save_path") . "/sess_" . $oldSessionId;
+                if (file_exists($sessionFile)) {
+                    unlink($sessionFile);
+                }
+            }
+            
+            // Start a completely new session
+            session_start();
+            
+            // Regenerate session ID to ensure new session
+            session_regenerate_id(true);
+            
+            // Clear any residual session data
+            $_SESSION = [];
+            
+            // Log the logout for debugging
+            error_log("WordSearch logout completed - Old session: $oldSessionId, New session: " . session_id());
+            
+            // Redirect to home page
+            header('Location: /');
+            exit;
+        } catch (\Exception $e) {
+            error_log("Logout error: " . $e->getMessage());
+            header('Location: /');
+            exit;
         }
     }
 
@@ -812,6 +870,13 @@ class Router
     // Page handlers
     public function handleHomePage(): void
     {
+        // Check for access_token parameter for cross-site login
+        $accessToken = $_GET['access_token'] ?? '';
+        if (!empty($accessToken)) {
+            $this->handleAccessTokenLogin($accessToken);
+            return;
+        }
+
         // Get user preferences for smart defaults
         $userPrefs = $this->getUserPreferencesForHome();
         $this->renderPage('home', $userPrefs);
@@ -997,5 +1062,119 @@ class Router
             error_log("Stack trace: " . $e->getTraceAsString());
             $this->sendErrorResponse('Failed to save score: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Handle transfer login
+     */
+    public function handleTransferLogin(): void
+    {
+        try {
+            $token = $_GET['token'] ?? '';
+            
+            if (empty($token)) {
+                $this->showTransferError('No transfer token provided');
+                return;
+            }
+
+            $transferController = new \TransferController();
+            $transferController->transferLogin();
+
+        } catch (\Exception $e) {
+            error_log("Transfer login error: " . $e->getMessage());
+            $this->showTransferError('Transfer failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle generate transfer token
+     */
+    public function handleGenerateTransferToken(): void
+    {
+        try {
+            $transferController = new \TransferController();
+            $transferController->generateTransferToken();
+        } catch (\Exception $e) {
+            error_log("Generate token error: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to generate token: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Handle get token info
+     */
+    public function handleGetTokenInfo(): void
+    {
+        try {
+            $transferController = new \TransferController();
+            $transferController->getTokenInfo();
+        } catch (\Exception $e) {
+            error_log("Get token info error: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to get token info: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Handle get session info
+     */
+    public function handleGetSessionInfo(): void
+    {
+        try {
+            $transferController = new \TransferController();
+            $transferController->getSessionInfo();
+        } catch (\Exception $e) {
+            error_log("Get session info error: " . $e->getMessage());
+            $this->sendErrorResponse('Failed to get session info: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Handle access token login for cross-site authentication
+     */
+    private function handleAccessTokenLogin(string $accessToken): void
+    {
+        try {
+            $db = new \App\Services\DatabaseService();
+            
+            // Find user with valid access token
+            $user = $db->fetchOne(
+                'SELECT * FROM users WHERE reset_token = :token AND reset_expires > NOW()',
+                ['token' => $accessToken]
+            );
+
+            if (!$user) {
+                error_log("Invalid or expired access token: " . $accessToken);
+                $this->renderPage('home', ['error' => 'Invalid or expired access token']);
+                return;
+            }
+
+            // Log the user in using AuthService
+            $authService = new \App\Services\AuthService($db);
+            $result = $authService->login($user['username'], $user['password'], true); // Skip password verification
+
+            // Clear the access token after successful login
+            $db->query(
+                'UPDATE users SET reset_token = NULL, reset_expires = NULL WHERE id = :user_id',
+                ['user_id' => $user['id']]
+            );
+
+            // Redirect to home page
+            header('Location: /');
+            exit;
+
+        } catch (\Exception $e) {
+            error_log("Access token login error: " . $e->getMessage());
+            $this->renderPage('home', ['error' => 'Failed to login with access token']);
+        }
+    }
+
+    /**
+     * Show transfer error page
+     */
+    private function showTransferError(string $message): void
+    {
+        http_response_code(400);
+        include __DIR__ . '/../../resources/views/errors/transfer-error.php';
+        exit;
     }
 }

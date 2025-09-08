@@ -207,26 +207,13 @@
     }
 
     function handleLogout() {
-        const token = localStorage.getItem('authToken');
+        // Clear local data first
+        localStorage.removeItem('authToken');
+        currentUser = null;
+        updateAuthUI();
 
-        if (token) {
-            $.ajax({
-                url: '/api/auth/logout',
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                success: function () {
-                    // Clear local data
-                    localStorage.removeItem('authToken');
-                    currentUser = null;
-                    updateAuthUI();
-                    showAlert('Logged out successfully', 'info');
-                }
-            });
-        } else {
-            localStorage.removeItem('authToken');
-            currentUser = null;
-            updateAuthUI();
-        }
+        // Redirect to logout page to clear PHP session
+        window.location.href = '/logout';
     }
 
     function validateToken(token) {
