@@ -364,7 +364,7 @@ class AdminController extends BaseController
         $diff = $now - $time;
         
         // Debug output to see what's happening
-        // error_log("DEBUG formatTimeAgo: timestamp='$timestamp', time=$time, now=$now, diff=$diff seconds\n\n", 3, "/var/www/html/Sudoku/Dev/logs/debug.log");
+        // error_log("DEBUG formatTimeAgo: timestamp='$timestamp', time=$time, now=$now, diff=$diff seconds\n\n", 3, "/var/www/html/Logs/wordsearch_debug.log");
 
         
         // If we get a negative difference, the timestamp might be in the future
@@ -374,7 +374,7 @@ class AdminController extends BaseController
             $clean_timestamp = preg_replace('/-\d{2}$/', '', $timestamp);
             $time = strtotime($clean_timestamp);
             $diff = $now - $time;
-            error_log("DEBUG formatTimeAgo: Cleaned timestamp='$clean_timestamp', new time=$time, new diff=$diff seconds", 3, "/var/www/html/Sudoku/Dev/logs/debug.log");
+            error_log("DEBUG formatTimeAgo: Cleaned timestamp='$clean_timestamp', new time=$time, new diff=$diff seconds", 3, "/var/www/html/Logs/wordsearch_debug.log");
         }
         
         if ($diff < 60) {

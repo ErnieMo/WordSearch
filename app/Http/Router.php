@@ -47,6 +47,7 @@ class Router
         $this->addRoute('GET', '/api/puzzle/{id}', [$this, 'handleGetPuzzle']);
         $this->addRoute('POST', '/api/validate', [$this, 'handleValidateWord']);
         $this->addRoute('POST', '/api/progress', [$this, 'handleUpdateProgress']);
+        $this->addRoute('POST', '/api/word-found', [$this, 'handleWordFound']);
         $this->addRoute('GET', '/api/themes', [$this, 'handleGetThemes']);
 
         // Score routes
@@ -88,24 +89,25 @@ class Router
         $path = parse_url($path, PHP_URL_PATH);
         
         // Debug logging
-        error_log("Router: Handling request - Method: $method, Path: $path");
+        error_log("Router: Handling request - Method: $method, Path: $path", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         foreach ($this->routes as $route) {
+            error_log("Router: Checking route - Method: {$route['method']}, Path: {$route['path']} against request - Method: $method, Path: $path", 3, '/var/www/html/Logs/wordsearch_debug.log');
             if ($route['method'] === $method && $this->matchPath($route['path'], $path)) {
-                error_log("Router: Route matched! Calling handler: " . get_class($route['handler'][0]) . "::" . $route['handler'][1]);
+                error_log("Router: Route matched! Calling handler: " . get_class($route['handler'][0]) . "::" . $route['handler'][1], 3, '/var/www/html/Logs/wordsearch_debug.log');
                 try {
                     $params = $this->extractPathParams($route['path'], $path);
                     call_user_func_array($route['handler'], $params);
                     return;
                 } catch (\Exception $e) {
-                    error_log("Router: Handler error: " . $e->getMessage());
+                    error_log("Router: Handler error: " . $e->getMessage(), 3, '/var/www/html/Logs/wordsearch_errors.log');
                     $this->sendErrorResponse($e->getMessage(), 500);
                     return;
                 }
             }
         }
         
-        error_log("Router: No route found for $method $path");
+        error_log("Router: No route found for $method $path", 3, '/var/www/html/Logs/wordsearch_debug.log');
         $this->sendErrorResponse('Route not found', 404);
     }
 
@@ -311,9 +313,12 @@ class Router
     // Game handlers
     public function handleGeneratePuzzle(): void
     {
+        error_log("=== HANDLE GENERATE PUZZLE START ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
         $data = $this->getRequestData();
+        error_log("Request data received: " . json_encode($data));
         $themeId = $data['theme_id'] ?? '';
         $options = $data['options'] ?? '';
+        error_log("Theme ID: $themeId, Options: " . json_encode($options));
         
         if (empty($themeId)) {
             $this->sendErrorResponse('No theme ID provided', 400);
@@ -355,7 +360,7 @@ class Router
             $userId = null;
             if ($user && isset($user['user_id'])) {
                 // Check if user actually exists in database
-                $userCheck = $this->db->query("SELECT user_id FROM users WHERE user_id = ?", [$user['user_id']]);
+                $userCheck = $this->dbService->query("SELECT id FROM users WHERE id = ?", [$user['user_id']]);
                 if ($userCheck->rowCount() > 0) {
                     $userId = $user['user_id'];
                 } else {
@@ -376,7 +381,9 @@ class Router
                 'puzzle_data' => $puzzle // Store complete puzzle data as JSON
             ];
             
+            error_log("About to create game with data: " . json_encode($gameData));
             $gameId = $this->gameService->createGame($gameData);
+            error_log("Game created successfully with ID: " . $gameId, 3, '/var/www/html/Logs/wordsearch_debug.log');
             
             // Save guest user preferences for future visits (if no valid user)
             if (!$userId) {
@@ -485,7 +492,7 @@ class Router
             $user = $this->getAuthenticatedUser();
             error_log("handleUpdateProgress: Authentication check - user: " . ($user ? json_encode($user) : 'null'));
             if (!$user) {
-                error_log("handleUpdateProgress: No authenticated user found");
+                error_log("handleUpdateProgress: No authenticated user found", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 $this->sendErrorResponse('Authentication required', 401);
                 return;
             }
@@ -523,7 +530,7 @@ class Router
                 $updateData['elapsed_time'] = (int)$elapsedTime;
                 error_log("handleUpdateProgress: Added elapsed_time to updateData: " . (int)$elapsedTime);
             } else {
-                error_log("handleUpdateProgress: elapsed_time not provided in request data");
+                error_log("handleUpdateProgress: elapsed_time not provided in request data", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             // Debug logging
@@ -551,6 +558,63 @@ class Router
         } catch (\Exception $e) {
             error_log("Error updating progress: " . $e->getMessage());
             $this->sendErrorResponse('Failed to update progress', 500);
+        }
+    }
+
+    public function handleWordFound(): void
+    {
+        $data = $this->getRequestData();
+        $puzzleId = $data['puzzle_id'] ?? null;
+        $foundWord = $data['found_word'] ?? null;
+        $wordsFound = $data['words_found'] ?? 0;
+        $wordsFoundData = $data['words_found_data'] ?? [];
+        $elapsedTime = $data['elapsed_time'] ?? null;
+        
+        error_log("handleWordFound: Received data - puzzleId: $puzzleId, foundWord: $foundWord, wordsFound: $wordsFound", 3, '/var/www/html/Logs/wordsearch_debug.log');
+        
+        if (!$puzzleId || !$foundWord) {
+            $this->sendErrorResponse('Missing puzzle ID or found word', 400);
+            return;
+        }
+        
+        try {
+            // Get the current game record
+            $game = $this->gameService->getGameByPuzzleId($puzzleId);
+            if (!$game) {
+                $this->sendErrorResponse('Game not found', 404);
+                return;
+            }
+            
+            // Update the game record with the found word
+            $updateData = [
+                'words_found' => $wordsFound,
+                'words_found_data' => $wordsFoundData
+            ];
+            
+            // Include elapsed_time if provided
+            if (isset($data['elapsed_time'])) {
+                $updateData['elapsed_time'] = (int)$elapsedTime;
+            }
+            
+            error_log("handleWordFound: Updating game with data: " . json_encode($updateData), 3, '/var/www/html/Logs/wordsearch_debug.log');
+            
+            $result = $this->gameService->updateGame($game['id'], $updateData);
+            
+            if ($result) {
+                $this->sendJsonResponse([
+                    'success' => true,
+                    'message' => "Word '$foundWord' found and saved!",
+                    'found_word' => $foundWord,
+                    'words_found' => $wordsFound,
+                    'total_words' => $game['total_words']
+                ]);
+            } else {
+                $this->sendErrorResponse('Failed to save found word', 500);
+            }
+            
+        } catch (\Exception $e) {
+            error_log("Error saving found word: " . $e->getMessage(), 3, '/var/www/html/Logs/wordsearch_errors.log');
+            $this->sendErrorResponse('Failed to save found word', 500);
         }
     }
 
@@ -949,7 +1013,7 @@ class Router
     private function getRequestData(): array
     {
         $input = file_get_contents('php://input');
-        error_log("Raw request input: " . $input);
+        error_log("Raw request input: " . $input, 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         $decoded = json_decode($input, true);
         error_log("Decoded request data: " . json_encode($decoded));
@@ -1065,9 +1129,9 @@ class Router
                 return;
             }
 
-            error_log("=== SAVE SCORE DEBUG ===");
+            error_log("=== SAVE SCORE DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             error_log("User authenticated: " . json_encode($user));
-            error_log("Game ID: " . $gameId);
+            error_log("Game ID: " . $gameId, 3, '/var/www/html/Logs/wordsearch_debug.log');
 
             // Update the game record with completion data and user ID
             $updateData = [
@@ -1094,7 +1158,7 @@ class Router
                 ]
             ]);
             
-            error_log("Response sent successfully");
+            error_log("Response sent successfully", 3, '/var/www/html/Logs/wordsearch_debug.log');
         } catch (\Exception $e) {
             error_log("Exception in handleSaveScore: " . $e->getMessage());
             error_log("Stack trace: " . $e->getTraceAsString());
@@ -1181,7 +1245,7 @@ class Router
             );
 
             if (!$user) {
-                error_log("Invalid or expired access token: " . $accessToken);
+                error_log("Invalid or expired access token: " . $accessToken, 3, '/var/www/html/Logs/wordsearch_debug.log');
                 $this->renderPage('home', ['error' => 'Invalid or expired access token']);
                 return;
             }

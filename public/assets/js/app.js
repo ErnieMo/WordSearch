@@ -495,6 +495,10 @@
             headers['Authorization'] = `Bearer ${token}`;
         }
 
+        console.log('Making AJAX request to /api/generate with method POST');
+        console.log('Request data:', puzzleData);
+        console.log('Request headers:', headers);
+
         $.ajax({
             url: '/api/generate',
             method: 'POST',
@@ -513,14 +517,28 @@
                     showAlert(response.error || 'Failed to generate puzzle', 'danger');
                 }
             },
-            error: function (xhr) {
+            error: function (xhr, status, error) {
                 $('#loadingModal').modal('hide');
+                console.error('AJAX Error Details:');
+                console.error('Status:', xhr.status);
+                console.error('Status Text:', xhr.statusText);
+                console.error('Response Text:', xhr.responseText);
+                console.error('Response Headers:', xhr.getAllResponseHeaders());
+
                 const response = xhr.responseJSON;
+                console.error('Parsed Response JSON:', response);
+
                 if (xhr.status === 401) {
                     showAlert('Authentication required. Please log in to save your score to the leaderboard.', 'info');
                     // Don't force login - user can still play as guest
                 } else {
-                    showAlert(response?.error || 'Failed to generate puzzle', 'danger');
+                    let errorMessage = 'Failed to generate puzzle';
+                    if (response && response.error) {
+                        errorMessage = response.error;
+                    } else if (xhr.responseText) {
+                        errorMessage = xhr.responseText;
+                    }
+                    showAlert(errorMessage, 'danger');
                 }
             }
         });

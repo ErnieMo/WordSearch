@@ -16,7 +16,7 @@ namespace Sudoku\Services;
 
 // Enable error logging for debugging
 // if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-//     error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../../logs/included_files.log');
+//     error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 // }
 
 use Exception;
@@ -55,9 +55,9 @@ class CookieService
     public function createTrustedDeviceCookie(int $user_id, string $email, ?array $fingerprint_data = null): bool
     {
         try {
-            // error_log("=== TRUSTED DEVICE DEBUG START ===");
-            // error_log("Setting trusted device for user: " . $user_id);
-            // error_log("Email: " . $email);
+            // error_log("=== TRUSTED DEVICE DEBUG START ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
+            // error_log("Setting trusted device for user: " . $user_id, 3, '/var/www/html/Logs/wordsearch_debug.log');
+            // error_log("Email: " . $email, 3, '/var/www/html/Logs/wordsearch_debug.log');
             // error_log("User agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown'));
             // error_log("IP address: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
 
@@ -71,11 +71,11 @@ class CookieService
 
             // Process device fingerprint if available
             if ($fingerprint_data) {
-                // error_log("Processing enhanced device fingerprint...");
+                // error_log("Processing enhanced device fingerprint...", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 $fingerprint_result = $this->device_fingerprint_service->processDeviceFingerprint($user_id, $fingerprint_data, $token);
                 if ($fingerprint_result['success']) {
                     $device_name = $fingerprint_result['device_name'];
-                    // error_log("Enhanced device name generated: " . $device_name);
+                    // error_log("Enhanced device name generated: " . $device_name, 3, '/var/www/html/Logs/wordsearch_debug.log');
                     
                     // The DeviceFingerprintService has already stored the fingerprint data
                     // We just need to set the cookie, no need for additional database operations
@@ -93,7 +93,7 @@ class CookieService
                 // Create basic trusted device record
                 $this->createBasicTrustedDeviceRecord($user_id, $token, $expires, $device_name);
             }
-            // error_log("Final device name: " . $device_name);
+            // error_log("Final device name: " . $device_name, 3, '/var/www/html/Logs/wordsearch_debug.log');
 
             // Prepare cookie data for encryption
             $cookie_data = [
@@ -131,7 +131,7 @@ class CookieService
             }
 
             // Log to database
-            // error_log("Logging to database...");
+            // error_log("Logging to database...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             $this->logging_service->logToDatabase('TRUSTED_DEVICE_CREATED', [
                 'user_id' => $user_id,
                 'email' => $email,
@@ -139,18 +139,18 @@ class CookieService
                 'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
                 'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
             ]);
-            // error_log("Logging successful!");
+            // error_log("Logging successful!", 3, '/var/www/html/Logs/wordsearch_debug.log');
 
-            // error_log("=== TRUSTED DEVICE DEBUG END ===");
+            // error_log("=== TRUSTED DEVICE DEBUG END ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             return true;
         } catch (Exception $e) {
-            // error_log("=== TRUSTED DEVICE ERROR ===");
+            // error_log("=== TRUSTED DEVICE ERROR ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             // error_log("Error creating trusted device: " . $e->getMessage());
             // error_log("Error code: " . $e->getCode());
             // error_log("File: " . $e->getFile());
             // error_log("Line: " . $e->getLine());
             // error_log("Stack trace: " . $e->getTraceAsString());
-            // error_log("=== END ERROR ===");
+            // error_log("=== END ERROR ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             
             $this->logging_service->logToDatabase('TRUSTED_DEVICE_CREATION_ERROR', [
                 'user_id' => $user_id,
@@ -169,8 +169,8 @@ class CookieService
     {
         try {
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("=== COOKIE VALIDATION DEBUG ===");
-                error_log("Cookie name: " . $this->cookie_name);
+                error_log("=== COOKIE VALIDATION DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
+                error_log("Cookie name: " . $this->cookie_name, 3, '/var/www/html/Logs/wordsearch_debug.log');
                 error_log("Cookie exists: " . (isset($_COOKIE[$this->cookie_name]) ? 'YES' : 'NO'));
                 if (isset($_COOKIE[$this->cookie_name])) {
                     error_log("Cookie value length: " . strlen($_COOKIE[$this->cookie_name]));
@@ -180,7 +180,7 @@ class CookieService
 
             if (!isset($_COOKIE[$this->cookie_name])) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("No trusted device cookie found");
+                    error_log("No trusted device cookie found", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
                 return null;
             }
@@ -201,7 +201,7 @@ class CookieService
 
             if (!$cookie_data) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("Cookie decryption failed - returning null");
+                    error_log("Cookie decryption failed - returning null", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
                 return null;
             }
@@ -209,7 +209,7 @@ class CookieService
             // Check if cookie has expired
             if (isset($cookie_data['expires_at']) && $cookie_data['expires_at'] < time()) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("Cookie expired - removing and returning null");
+                    error_log("Cookie expired - removing and returning null", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
                 $this->removeTrustedDeviceCookie();
                 return null;
@@ -218,7 +218,7 @@ class CookieService
             // Validate required fields
             if (!isset($cookie_data['user_id']) || !isset($cookie_data['email']) || !isset($cookie_data['device_token'])) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("Required fields missing - returning null");
+                    error_log("Required fields missing - returning null", 3, '/var/www/html/Logs/wordsearch_debug.log');
                     error_log("Missing fields: " . implode(', ', array_filter([
                         !isset($cookie_data['user_id']) ? 'user_id' : null,
                         !isset($cookie_data['email']) ? 'email' : null,
@@ -231,15 +231,15 @@ class CookieService
             // Validate device context (IP and user agent)
             if (!$this->validateDeviceContext($cookie_data)) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("Device context validation failed - returning null");
+                    error_log("Device context validation failed - returning null", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
                 return null;
             }
 
             // Verify the token exists in the database
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Looking up trusted device in database...");
-                error_log("User ID: " . $cookie_data['user_id']);
+                error_log("Looking up trusted device in database...", 3, '/var/www/html/Logs/wordsearch_debug.log');
+                error_log("User ID: " . $cookie_data['user_id'], 3, '/var/www/html/Logs/wordsearch_debug.log');
                 error_log("Device token: " . substr($cookie_data['device_token'], 0, 20) . "...");
             }
 
@@ -251,15 +251,15 @@ class CookieService
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
                 error_log("Database lookup result: " . ($trusted_device ? 'FOUND' : 'NOT FOUND'));
                 if ($trusted_device) {
-                    error_log("Device ID: " . $trusted_device['id']);
+                    error_log("Device ID: " . $trusted_device['id'], 3, '/var/www/html/Logs/wordsearch_debug.log');
                     error_log("Device active: " . ($trusted_device['is_active'] ? 'YES' : 'NO'));
-                    error_log("Device expires: " . $trusted_device['expires_at']);
+                    error_log("Device expires: " . $trusted_device['expires_at'], 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
             }
 
             if (!$trusted_device) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("Trusted device not found in database - returning null");
+                    error_log("Trusted device not found in database - returning null", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
                 return null;
             }
@@ -267,7 +267,7 @@ class CookieService
             // Check if device is still active
             if (!$trusted_device['is_active'] || strtotime($trusted_device['expires_at']) < time()) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("Device inactive or expired - removing cookie and returning null");
+                    error_log("Device inactive or expired - removing cookie and returning null", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
                 $this->removeTrustedDeviceCookie();
                 return null;
@@ -281,7 +281,7 @@ class CookieService
             );
 
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Cookie validation SUCCESS - returning user data");
+                error_log("Cookie validation SUCCESS - returning user data", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
 
             return $cookie_data;

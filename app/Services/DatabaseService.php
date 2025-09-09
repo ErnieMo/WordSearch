@@ -162,7 +162,7 @@ class DatabaseService
      */
     private function logQuery(string $sql, array $params = []): void
     {
-        $this->logFile = '/var/www/html/WordSearch/Dev/log/database.log';
+        $this->logFile = '/var/www/html/Logs/wordsearch_database.log';
         
         // Get the calling file and line number
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);

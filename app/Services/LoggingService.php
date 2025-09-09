@@ -25,9 +25,9 @@ class LoggingService
     public function __construct()
     {
         $this->debug_enabled = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';
-        $this->database_log_file = __DIR__ . '/../../logs/database.log';
-        $this->games_log_file = __DIR__ . '/../../logs/games.log';
-        $this->email_log_file = __DIR__ . '/../../logs/email.log';
+        $this->database_log_file = __DIR__ . '/../../../../Logs/database.log';
+        $this->games_log_file = __DIR__ . '/../../../../Logs/games.log';
+        $this->email_log_file = __DIR__ . '/../../../../Logs/email.log';
     }
 
     /**

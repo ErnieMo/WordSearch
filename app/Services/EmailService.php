@@ -15,7 +15,7 @@ namespace Sudoku\Services;
  */
 
 // Log file inclusion for debugging
-//error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../logs/included_files.log');
+//error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 
 /**
  * Email service class
@@ -356,7 +356,7 @@ class EmailService
      */
     private function logEmail(string $to_email, string $subject, string $message, array $result): void
     {
-        $log_file = __DIR__ . '/../../logs/email.log';
+        $log_file = __DIR__ . '/../../../../Logs/email.log';
         $timestamp = date('Y-m-d H:i:s');
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
@@ -408,7 +408,7 @@ class EmailService
         file_put_contents($log_file, $log_line, FILE_APPEND | LOCK_EX);
         
         // Also log detailed JSON entry for debugging
-        $json_log_file = __DIR__ . '/../../logs/email_detailed.log';
+        $json_log_file = __DIR__ . '/../../../../Logs/email_detailed.log';
         $json_entry = json_encode($log_entry, JSON_PRETTY_PRINT) . PHP_EOL;
         file_put_contents($json_log_file, $json_entry, FILE_APPEND | LOCK_EX);
     }

@@ -9,7 +9,7 @@ declare(strict_types=1);
  */
 
 // Log file inclusion for debugging
-error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../logs/included_files.log');
+error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 
 // Load environment variables
 if (file_exists(__DIR__ . '/../.env')) {
@@ -72,7 +72,7 @@ try {
     
     // Generate a secure access token
     $accessToken = bin2hex(random_bytes(32));
-    error_log("WordSearch hashed_site_redirect - Generated token: " . $accessToken);
+    error_log("WordSearch hashed_site_redirect - Generated token: " . $accessToken, 3, '/var/www/html/Logs/wordsearch_debug.log');
     
     // Set token expiry to 1 minute from now
     $expiryTime = date('Y-m-d H:i:s', time() + 60);

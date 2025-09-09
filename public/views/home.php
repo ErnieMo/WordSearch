@@ -198,4 +198,33 @@ $(document).ready(function() {
     font-size: 18px;
     font-weight: bold;
 }
+
+.theme-card {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.theme-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.theme-card.selected {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    border: 3px solid #007bff !important;
+}
+
+.theme-card.selected::before {
+    content: "✓";
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    z-index: 10;
+}
 </style>

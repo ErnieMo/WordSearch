@@ -68,7 +68,7 @@ class AuthService
     public function login(string $usernameOrEmail, string $password, bool $skipPasswordVerification = false): array
     {
         // Log the search parameters
-        error_log("Login attempt - searching for user with: usernameOrEmail = '{$usernameOrEmail}'");
+        error_log("Login attempt - searching for user with: usernameOrEmail = '{$usernameOrEmail}'", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         // Find user by username OR email
         $user = $this->db->fetchOne(
@@ -80,7 +80,7 @@ class AuthService
         if ($user) {
             error_log("User found: ID={$user['id']}, username={$user['username']}, has_default_theme=" . ($user['default_theme'] ?? 'NULL') . ", has_default_level=" . ($user['default_level'] ?? 'NULL'));
         } else {
-            error_log("No user found with usernameOrEmail = '{$usernameOrEmail}'");
+            error_log("No user found with usernameOrEmail = '{$usernameOrEmail}'", 3, '/var/www/html/Logs/wordsearch_debug.log');
         }
 
         if (!$user) {

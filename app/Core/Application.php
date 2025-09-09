@@ -110,7 +110,7 @@ class Application
         
         // Log request processing
         if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
-            // error_log("Processing request: {$request_method} {$full_uri} -> {$request_uri}");
+            // error_log("Processing request: {$request_method} {$full_uri} -> {$request_uri}", 3, '/var/www/html/Logs/wordsearch_debug.log');
         }
 
         // Handle API routes
@@ -130,13 +130,13 @@ class Application
     {
         // Log web request handling
         if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
-            // error_log("Handling web request: {$method} {$uri}");
+            // error_log("Handling web request: {$method} {$uri}", 3, '/var/www/html/Logs/wordsearch_debug.log');
             // error_log("Available routes for {$method}: " . json_encode(array_keys($this->routes[$method] ?? [])));
         }
         
         if (!isset($this->routes[$method][$uri])) {
             if (($_ENV['APP_DEBUG'] ?? 'false') === 'true') {
-                // error_log("Route not found: {$method} {$uri}");
+                // error_log("Route not found: {$method} {$uri}", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             $this->render404();
             return;

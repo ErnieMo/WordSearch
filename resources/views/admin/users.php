@@ -1,5 +1,5 @@
 <?php
-//error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../../../logs/included_files.log');
+//error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 ?>
 
 <style>

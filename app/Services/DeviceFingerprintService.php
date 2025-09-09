@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Sudoku\Services;
 
-// error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../../logs/included_files.log');
+// error_log(__FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 
 use Exception;
 use PDO;
@@ -36,39 +36,39 @@ class DeviceFingerprintService
         try {
             // Debug logging (only in development) - Reduced for Nginx buffer limits
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("=== DEVICE FINGERPRINT DEBUG ===");
+                error_log("=== DEVICE FINGERPRINT DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 error_log("User ID: " . $user_id . " | Token: " . ($token ? 'Yes' : 'No'));
             }
             
             // Extract and validate fingerprint data
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("About to extract fingerprint data...");
+                error_log("About to extract fingerprint data...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             $processed_data = $this->extractFingerprintData($fingerprint_data);
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Data processed successfully");
+                error_log("Data processed successfully", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             // Generate enhanced device name
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("About to generate device name...");
+                error_log("About to generate device name...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             $device_name = $this->generateEnhancedDeviceName($processed_data);
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Generated device name: " . $device_name);
+                error_log("Generated device name: " . $device_name, 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             // Store fingerprint data in database
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("About to store fingerprint data...");
+                error_log("About to store fingerprint data...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             $this->storeFingerprintData($user_id, $processed_data, $token);
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Fingerprint data stored successfully");
+                error_log("Fingerprint data stored successfully", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Returning success result");
+                error_log("Returning success result", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             return [
@@ -78,7 +78,7 @@ class DeviceFingerprintService
             ];
         } catch (Exception $e) {
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("=== DEVICE FINGERPRINT ERROR ===");
+                error_log("=== DEVICE FINGERPRINT ERROR ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 error_log("Error processing device fingerprint: " . $e->getMessage());
                 error_log("Exception file: " . $e->getFile());
                 error_log("Exception line: " . $e->getLine());
@@ -540,7 +540,7 @@ class DeviceFingerprintService
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
                 error_log("Database insert result: " . ($insert_result ? 'SUCCESS' : 'FAILED'));
                 if ($insert_result) {
-                    error_log("New trusted device record created with ID: " . $insert_result);
+                    error_log("New trusted device record created with ID: " . $insert_result, 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
             }
         } catch (Exception $e) {
@@ -551,7 +551,7 @@ class DeviceFingerprintService
         }
         
         if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-            error_log("Fingerprint data stored for user: " . $user_id);
+            error_log("Fingerprint data stored for user: " . $user_id, 3, '/var/www/html/Logs/wordsearch_debug.log');
         }
     }
 
@@ -563,7 +563,7 @@ class DeviceFingerprintService
         try {
             // Debug logging (only in development)
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("=== GENERATE DEVICE NAME DEBUG ===");
+                error_log("=== GENERATE DEVICE NAME DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 error_log("Input data keys: " . implode(', ', array_keys($processed_data)));
             }
             
@@ -573,16 +573,16 @@ class DeviceFingerprintService
             $screen = $processed_data['screen_resolution'] ?? 'Unknown Resolution';
             
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Extracted browser: " . $browser);
-                error_log("Extracted OS: " . $os);
-                error_log("Extracted screen: " . $screen);
+                error_log("Extracted browser: " . $browser, 3, '/var/www/html/Logs/wordsearch_debug.log');
+                error_log("Extracted OS: " . $os, 3, '/var/www/html/Logs/wordsearch_debug.log');
+                error_log("Extracted screen: " . $screen, 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             // Detect device type with error handling
             try {
                 $device_type = $this->detectDeviceType($processed_data);
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("Detected device type: " . $device_type);
+                    error_log("Detected device type: " . $device_type, 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
             } catch (Exception $e) {
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
@@ -612,8 +612,8 @@ class DeviceFingerprintService
             }
             
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Cleaned browser: " . $browser);
-                error_log("Cleaned OS: " . $os);
+                error_log("Cleaned browser: " . $browser, 3, '/var/www/html/Logs/wordsearch_debug.log');
+                error_log("Cleaned OS: " . $os, 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             // Generate device name
@@ -630,15 +630,15 @@ class DeviceFingerprintService
             }
             
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Final device name: " . $device_name);
-                error_log("=== END DEVICE NAME DEBUG ===");
+                error_log("Final device name: " . $device_name, 3, '/var/www/html/Logs/wordsearch_debug.log');
+                error_log("=== END DEVICE NAME DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             
             return $device_name;
             
         } catch (Exception $e) {
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("=== DEVICE NAME GENERATION ERROR ===");
+                error_log("=== DEVICE NAME GENERATION ERROR ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 error_log("Error: " . $e->getMessage());
                 error_log("File: " . $e->getFile());
                 error_log("Line: " . $e->getLine());

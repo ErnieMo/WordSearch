@@ -1,11 +1,11 @@
 <?php
 // Enable error logging for debugging
 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-// error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../../logs/included_files.log');
+// error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 }
 
-//error_log("=== LOGIN VIEW RENDERING START ===\n");
-//error_log("Login view file: " . __FILE__ . "\n");
+//error_log("=== LOGIN VIEW RENDERING START ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
+//error_log("Login view file: " . __FILE__ . "\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
 //error_log("Flash messages: " . json_encode($flash_messages ?? []) . "\n");
 //error_log("Session data: " . json_encode($_SESSION ?? []) . "\n");
 ?>
@@ -397,5 +397,5 @@ if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
 </body>
 </html>
 <?php
-//error_log("=== LOGIN VIEW RENDERING COMPLETE ===\n");
+//error_log("=== LOGIN VIEW RENDERING COMPLETE ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
 ?> 

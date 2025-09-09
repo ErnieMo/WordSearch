@@ -1246,4 +1246,49 @@
         completeGame();
     }
 
+    // Function to update database when a word is found
+    function updateWordFound(foundWord) {
+        if (!window.puzzleId) {
+            console.warn('No puzzle ID available for word found update');
+            return;
+        }
+
+        // Calculate elapsed time
+        const elapsedTime = gameState.startTime ? Math.floor((Date.now() - gameState.startTime) / 1000) : 0;
+
+        // Prepare data for API call
+        const data = {
+            puzzle_id: window.puzzleId,
+            found_word: foundWord,
+            words_found: gameState.foundWords ? gameState.foundWords.length : 0,
+            words_found_data: gameState.foundWords || [],
+            elapsed_time: elapsedTime
+        };
+
+        console.log('Updating word found:', data);
+
+        // Make API call to save word found
+        $.ajax({
+            url: '/api/word-found',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify(data),
+            success: function (response) {
+                if (response.success) {
+                    console.log('Word found saved successfully:', response.message);
+                } else {
+                    console.warn('Failed to save word found:', response.error);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('Error saving word found:', error);
+            }
+        });
+    }
+
+    // Expose the updateWordFound function globally so it can be called from the popup
+    window.updateWordFound = updateWordFound;
+
 })();

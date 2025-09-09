@@ -7,7 +7,7 @@ $pageTitle = 'Play Word Search - Word Search Game';
 
 // Session is already started in index.php
 // Debug session state
-error_log("\n=== PLAY.PHP SESSION DEBUG ===");
+error_log("\n=== PLAY.PHP SESSION DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
 error_log("\nSession ID: " . (session_id() ?: 'NO SESSION ID'));
 error_log("\nSession status: " . session_status());
 error_log("\nSession data: " . print_r($_SESSION, true));
@@ -21,12 +21,12 @@ $isLoggedIn = isset($_SESSION['user_id']) && isset($_SESSION['username']);
 $currentUsername = $_SESSION['username'] ?? '';
 
 error_log("\nisLoggedIn: " . ($isLoggedIn ? 'true' : 'false'));
-error_log("\ncurrentUsername: " . $currentUsername);
+error_log("\ncurrentUsername: " . $currentUsername, 3, '/var/www/html/Logs/wordsearch_debug.log');
 error_log("\nSession user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
 error_log("\nSession username: " . ($_SESSION['username'] ?? 'NOT SET'));
 error_log("\nisset(\$_SESSION['user_id']): " . (isset($_SESSION['user_id']) ? 'true' : 'false'));
 error_log("\nisset(\$_SESSION['username']): " . (isset($_SESSION['username']) ? 'true' : 'false'));
-error_log("\n=== END SESSION DEBUG ===");
+error_log("\n=== END SESSION DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
 
 // Get puzzle ID from URL parameter
 $puzzleId = $_GET['id'] ?? '';

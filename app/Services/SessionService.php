@@ -16,7 +16,7 @@ namespace Sudoku\Services;
 
 // Enable error logging for debugging
 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-// error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../logs/included_files.log');
+// error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 }
 
 use Firebase\JWT\JWT;
@@ -75,12 +75,12 @@ class SessionService
      */
     public function getCurrentUser(): ?array
     {
-        // error_log("\n=== GET CURRENT USER START ===");
+        // error_log("\n=== GET CURRENT USER START ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         // Check session first
         if (isset($_SESSION['user'])) {
             // error_log("User found in session: " . json_encode($_SESSION['user']));
-            // error_log("=== GET CURRENT USER END ===\n");
+            // error_log("=== GET CURRENT USER END ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
             return $_SESSION['user'];
         }
 
@@ -92,7 +92,7 @@ class SessionService
                 $_SESSION['user'] = $user_data;
                 $_SESSION['authenticated'] = true;
                 $_SESSION['login_time'] = time();
-                // error_log("=== GET CURRENT USER END ===\n");
+                // error_log("=== GET CURRENT USER END ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 return $user_data;
             }
         }
@@ -102,7 +102,7 @@ class SessionService
         // Check for JWT token in Authorization header
         $auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
         
-        // error_log("Authorization header: " . $auth_header);
+        // error_log("Authorization header: " . $auth_header, 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         if (str_starts_with($auth_header, 'Bearer ')) {
             $token = substr($auth_header, 7);
@@ -112,17 +112,17 @@ class SessionService
             if ($user_data) {
                 // error_log("JWT token decoded successfully: " . json_encode($user_data));
                 $_SESSION['user'] = $user_data;
-                // error_log("=== GET CURRENT USER END ===\n");
+                // error_log("=== GET CURRENT USER END ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 return $user_data;
             } else {
-                // error_log("JWT token decode failed");
+                // error_log("JWT token decode failed", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
         } else {
-            // error_log("No JWT token found in headers");
+            // error_log("No JWT token found in headers", 3, '/var/www/html/Logs/wordsearch_debug.log');
         }
 
-        // error_log("No user found");
-        // error_log("=== GET CURRENT USER END ===\n");
+        // error_log("No user found", 3, '/var/www/html/Logs/wordsearch_debug.log');
+        // error_log("=== GET CURRENT USER END ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
         return null;
     }
 
@@ -132,7 +132,7 @@ class SessionService
     private function validateTrustedDeviceCookie(string $cookie_value): ?array
     {
         try {
-            // error_log("=== VALIDATE TRUSTED DEVICE DEBUG START ===");
+            // error_log("=== VALIDATE TRUSTED DEVICE DEBUG START ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             // error_log("Cookie value: " . substr($cookie_value, 0, 30) . "...");
             
             // Parse cookie value (format: user_id:token)
@@ -146,68 +146,68 @@ class SessionService
 
             $user_id = $parts[0];
             $token = $parts[1];
-            // error_log("Parsed user_id: " . $user_id);
+            // error_log("Parsed user_id: " . $user_id, 3, '/var/www/html/Logs/wordsearch_debug.log');
             // error_log("Parsed token: " . substr($token, 0, 16) . "...");
 
             // Validate user ID
             if (!is_numeric($user_id) || $user_id <= 0) {
-                // error_log("Invalid user_id: " . $user_id);
+                // error_log("Invalid user_id: " . $user_id, 3, '/var/www/html/Logs/wordsearch_debug.log');
                 return null;
             }
 
             // Get trusted device record from database
-            // error_log("Looking for trusted device record...");
+            // error_log("Looking for trusted device record...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             $trusted_device = $this->database_service->findOne('trusted_devices', [
                 'user_id' => $user_id,
                 'expires_at' => ['>' => time()]
             ]);
 
             if (!$trusted_device) {
-                // error_log("No trusted device record found for user_id: " . $user_id);
+                // error_log("No trusted device record found for user_id: " . $user_id, 3, '/var/www/html/Logs/wordsearch_debug.log');
                 return null;
             }
             
             // error_log("Trusted device record found: " . json_encode($trusted_device));
 
             // Verify token hash
-            // error_log("Verifying token...");
+            // error_log("Verifying token...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             $token_verified = password_verify($token, $trusted_device['token_hash']);
             // error_log("Token verification result: " . ($token_verified ? 'true' : 'false'));
             
             if (!$token_verified) {
-                // error_log("Token verification failed");
+                // error_log("Token verification failed", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 return null;
             }
 
             // Check if user still exists and is active
-            // error_log("Getting user data...");
+            // error_log("Getting user data...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             $user = $this->database_service->findOne('users', ['id' => $user_id]);
             if (!$user) {
-                // error_log("User not found for user_id: " . $user_id);
+                // error_log("User not found for user_id: " . $user_id, 3, '/var/www/html/Logs/wordsearch_debug.log');
                 return null;
             }
             
             // error_log("User found: " . json_encode(array_keys($user)));
 
             // Log successful trusted device authentication
-            // error_log("Logging successful authentication...");
+            // error_log("Logging successful authentication...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             $this->logging_service->logToDatabase('TRUSTED_DEVICE_AUTH_SUCCESS', [
                 'user_id' => $user_id,
                 'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
                 'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
             ]);
 
-            // error_log("=== VALIDATE TRUSTED DEVICE DEBUG END ===");
+            // error_log("=== VALIDATE TRUSTED DEVICE DEBUG END ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             return $user;
 
         } catch (Exception $e) {
-            // error_log("=== VALIDATE TRUSTED DEVICE ERROR ===");
+            // error_log("=== VALIDATE TRUSTED DEVICE ERROR ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             // error_log("Error validating trusted device: " . $e->getMessage());
             // error_log("Error code: " . $e->getCode());
             // error_log("File: " . $e->getFile());
             // error_log("Line: " . $e->getLine());
             // error_log("Stack trace: " . $e->getTraceAsString());
-            // error_log("=== END ERROR ===");
+            // error_log("=== END ERROR ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             
             // Log error but don't expose details
             $this->logging_service->logToDatabase('TRUSTED_DEVICE_AUTH_ERROR', [
@@ -223,7 +223,7 @@ class SessionService
      */
     public function isAuthenticated(): bool
     {
-        // error_log("=== SESSION SERVICE - CHECKING AUTHENTICATION ===");
+        // error_log("=== SESSION SERVICE - CHECKING AUTHENTICATION ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
         // error_log("Session ID: " . (session_id() ?? 'none'));
         // error_log("Session data: " . json_encode($_SESSION ?? []));
         
@@ -245,21 +245,21 @@ class SessionService
                 // error_log("Trusted device cookie found, attempting auto-login...");
                 $user_data = $this->validateTrustedDeviceCookie($_COOKIE['trusted_device']);
                 if ($user_data) {
-                    // error_log("Auto-login successful via trusted device!");
+                    // error_log("Auto-login successful via trusted device!", 3, '/var/www/html/Logs/wordsearch_debug.log');
                     $_SESSION['user'] = $user_data;
                     $_SESSION['authenticated'] = true;
                     $_SESSION['login_time'] = time();
                     $is_authenticated = true;
                 } else {
-                    // error_log("Auto-login failed via trusted device");
+                    // error_log("Auto-login failed via trusted device", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
             } else {
-                // error_log("No trusted device cookie found");
+                // error_log("No trusted device cookie found", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
         }
         
         // error_log("Final authentication result: " . ($is_authenticated ? 'true' : 'false'));
-        // error_log("=== AUTHENTICATION CHECK COMPLETE ===");
+        // error_log("=== AUTHENTICATION CHECK COMPLETE ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
         return $is_authenticated;
     }
 
@@ -389,13 +389,13 @@ class SessionService
      */
     public function flash(string $key, string $message): void
     {
-    // error_log("=== SESSION SERVICE - FLASH MESSAGE ===\n");
-    // error_log("Key: " . $key . "\n");
-    // error_log("Message: " . $message . "\n");
+    // error_log("=== SESSION SERVICE - FLASH MESSAGE ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
+    // error_log("Key: " . $key . "\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
+    // error_log("Message: " . $message . "\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         $_SESSION['flash'][$key] = $message;
-    // error_log("Flash message stored in session\n");
-    // error_log("=== FLASH MESSAGE STORED ===\n");
+    // error_log("Flash message stored in session\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
+    // error_log("=== FLASH MESSAGE STORED ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
     }
 
     /**
@@ -403,19 +403,19 @@ class SessionService
      */
     public function getFlash(string $key): ?string
     {
-    // error_log("=== SESSION SERVICE - GET FLASH MESSAGE ===\n");
-    // error_log("Key: " . $key . "\n");
+    // error_log("=== SESSION SERVICE - GET FLASH MESSAGE ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
+    // error_log("Key: " . $key . "\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         $message = $_SESSION['flash'][$key] ?? null;
     // error_log("Message found: " . ($message ? 'yes' : 'no') . "\n");
         if ($message) {
-        // error_log("Message content: " . $message . "\n");
+        // error_log("Message content: " . $message . "\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
         }
         
         // Remove the flash message after retrieving it
         unset($_SESSION['flash'][$key]);
-    // error_log("Flash message removed from session\n");
-    // error_log("=== FLASH MESSAGE RETRIEVED ===\n");
+    // error_log("Flash message removed from session\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
+    // error_log("=== FLASH MESSAGE RETRIEVED ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         return $message;
     }
@@ -425,7 +425,7 @@ class SessionService
      */
     public function getAllFlash(): array
     {
-    // error_log("=== SESSION SERVICE - GET ALL FLASH MESSAGES ===\n");
+    // error_log("=== SESSION SERVICE - GET ALL FLASH MESSAGES ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         $flash_messages = $_SESSION['flash'] ?? [];
     // error_log("Flash messages count: " . count($flash_messages) . "\n");
@@ -433,8 +433,8 @@ class SessionService
         
         // Clear all flash messages
         unset($_SESSION['flash']);
-    // error_log("All flash messages cleared from session\n");
-    // error_log("=== ALL FLASH MESSAGES RETRIEVED ===\n");
+    // error_log("All flash messages cleared from session\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
+    // error_log("=== ALL FLASH MESSAGES RETRIEVED ===\n", 3, '/var/www/html/Logs/wordsearch_debug.log');
         
         return $flash_messages;
     }

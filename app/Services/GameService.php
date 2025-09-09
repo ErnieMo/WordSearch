@@ -31,7 +31,10 @@ class GameService
             'status' => 'active'
         ];
 
-        return $this->db->insert('wordsearch_games', $data);
+        error_log("GameService: About to insert game data: " . json_encode($data));
+        $result = $this->db->insert('wordsearch_games', $data);
+        error_log("GameService: Insert result: " . $result, 3, '/var/www/html/Logs/wordsearch_debug.log');
+        return $result;
     }
 
     /**
@@ -138,13 +141,13 @@ class GameService
         }
 
         if (empty($updateData)) {
-            error_log("GameService::updateGame: No update data provided");
+            error_log("GameService::updateGame: No update data provided", 3, '/var/www/html/Logs/wordsearch_debug.log');
             return false;
         }
 
         error_log("GameService::updateGame: Updating game $gameId with data: " . json_encode($updateData));
         
-        $result = $this->db->update('wordsearch_games', $updateData, ['puzzle_id' => $gameId]);
+        $result = $this->db->update('wordsearch_games', $updateData, ['id' => $gameId]);
         
         error_log("GameService::updateGame: Update result: " . ($result ? 'success' : 'failed'));
         

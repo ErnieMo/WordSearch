@@ -31,10 +31,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
     
     // Debug session creation
-    error_log("\n=== INDEX.PHP SESSION STARTED ===");
-    error_log("\nAPP_ENV: " . ($_ENV['APP_ENV'] ?? 'development'));
-    error_log("\nCookie domain set to: " . $cookieDomain);
-    error_log("\nSession ID: " . session_id());
+    error_log("\n=== INDEX.PHP SESSION STARTED ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
+    error_log("\nAPP_ENV: " . ($_ENV['APP_ENV'] ?? 'development'), 3, '/var/www/html/Logs/wordsearch_debug.log');
+    error_log("\nCookie domain set to: " . $cookieDomain, 3, '/var/www/html/Logs/wordsearch_debug.log');
+    error_log("\nSession ID: " . session_id(), 3, '/var/www/html/Logs/wordsearch_debug.log');
     error_log("\nSession name: " . ini_get('session.name'));
     error_log("\nCookie domain: " . ini_get('session.cookie_domain'));
     error_log("\nCookie path: " . ini_get('session.cookie_path'));

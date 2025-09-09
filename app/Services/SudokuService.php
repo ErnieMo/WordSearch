@@ -16,7 +16,7 @@ namespace Sudoku\Services;
 
 // Enable error logging for debugging
 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-// error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../logs/included_files.log');
+// error_log("\n\n" . __FILE__ . PHP_EOL, 3, __DIR__ . '/../../../../Logs/included_files.log');
 }
 
 /**

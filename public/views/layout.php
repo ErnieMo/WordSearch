@@ -84,12 +84,12 @@
                     <?php
                     // Session is already started in index.php
                     // Debug session state in layout
-                    error_log("=== LAYOUT.PHP SESSION DEBUG ===");
+                    error_log("=== LAYOUT.PHP SESSION DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
                     error_log("Session ID: " . (session_id() ?: 'NO SESSION ID'));
                     error_log("Session status: " . session_status());
                     error_log("Session data: " . print_r($_SESSION, true));
                     error_log("isLoggedIn: " . (isset($_SESSION['user_id']) && isset($_SESSION['username']) ? 'true' : 'false'));
-                    error_log("=== END LAYOUT SESSION DEBUG ===");
+                    error_log("=== END LAYOUT SESSION DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
                     
                     $isLoggedIn = isset($_SESSION['user_id']) && isset($_SESSION['username']);
                     

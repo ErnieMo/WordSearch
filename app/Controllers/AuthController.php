@@ -52,7 +52,7 @@ class AuthController extends BaseController
 
         // Check for trusted device cookie
         if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-            error_log("=== SHOW LOGIN DEBUG ===");
+            error_log("=== SHOW LOGIN DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
             error_log("Checking for trusted device cookie: " . ($_COOKIE['trusted_device'] ?? 'NOT SET'));
         }
         
@@ -61,15 +61,15 @@ class AuthController extends BaseController
         if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
             error_log("Trusted device validation result: " . ($trusted_device_data ? 'SUCCESS' : 'FAILED'));
             if ($trusted_device_data) {
-                error_log("User ID: " . $trusted_device_data['user_id']);
-                error_log("Email: " . $trusted_device_data['email']);
+                error_log("User ID: " . $trusted_device_data['user_id'], 3, '/var/www/html/Logs/wordsearch_debug.log');
+                error_log("Email: " . $trusted_device_data['email'], 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
         }
         
         if ($trusted_device_data) {
             // Auto-login with trusted device
             if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                error_log("Proceeding with auto-login...");
+                error_log("Proceeding with auto-login...", 3, '/var/www/html/Logs/wordsearch_debug.log');
             }
             $this->autoLoginWithTrustedDevice($trusted_device_data);
             return;
@@ -166,9 +166,9 @@ class AuthController extends BaseController
             if ($trust_device) {
                 // Debug logging for trusted device creation
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
-                    error_log("=== TRUSTED DEVICE CREATION DEBUG ===");
-                    error_log("User ID: " . $user['id']);
-                    error_log("Email: " . $email);
+                    error_log("=== TRUSTED DEVICE CREATION DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
+                    error_log("User ID: " . $user['id'], 3, '/var/www/html/Logs/wordsearch_debug.log');
+                    error_log("Email: " . $email, 3, '/var/www/html/Logs/wordsearch_debug.log');
                     error_log("Fingerprint data available: " . ($fingerprint_data ? 'Yes' : 'No'));
                     if ($fingerprint_data) {
                         error_log("Fingerprint fields: " . implode(', ', array_keys($fingerprint_data)));
@@ -179,7 +179,7 @@ class AuthController extends BaseController
                 
                 if (($_ENV['APP_ENV'] ?? 'development') === 'development') {
                     error_log("Trusted device cookie creation result: " . ($result ? 'Success' : 'Failed'));
-                    error_log("=== END TRUSTED DEVICE DEBUG ===");
+                    error_log("=== END TRUSTED DEVICE DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
                 }
                 
                 $this->logging_service->logToDatabase('TRUSTED_DEVICE_COOKIE_CREATED', [
@@ -971,8 +971,8 @@ class AuthController extends BaseController
             ];
 
             // Debug logging
-            error_log("=== LOG USER LOGIN DEBUG ===");
-            error_log("User ID: " . $user_id);
+            error_log("=== LOG USER LOGIN DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
+            error_log("User ID: " . $user_id, 3, '/var/www/html/Logs/wordsearch_debug.log');
             error_log("IP Address: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
             error_log("Fingerprint data available: " . ($fingerprint_data ? 'Yes' : 'No'));
 
@@ -981,8 +981,8 @@ class AuthController extends BaseController
             $login_data['device_name'] = $this->generateBasicDeviceName($user_agent);
             $login_data['fingerprint_hash'] = $fingerprint_data['fingerprint_hash'] ?? null;
 
-            error_log("Generated basic device name: " . $login_data['device_name']);
-            error_log("=== END LOG USER LOGIN DEBUG ===");
+            error_log("Generated basic device name: " . $login_data['device_name'], 3, '/var/www/html/Logs/wordsearch_debug.log');
+            error_log("=== END LOG USER LOGIN DEBUG ===", 3, '/var/www/html/Logs/wordsearch_debug.log');
 
             // Insert login record
             $this->database_service->insertOne('user_logins', $login_data);
