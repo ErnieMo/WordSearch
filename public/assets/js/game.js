@@ -363,18 +363,20 @@
         let startCell = null;
         let currentTouchCell = null;
         // More accurate touch device detection
-        let isTouchDevice = 'ontouchstart' in window && navigator.maxTouchPoints > 0;
-
-        // Additional check: if we're on desktop and have a mouse, prefer mouse events
-        if (navigator.userAgent.includes('Windows') || navigator.userAgent.includes('Mac')) {
-            isTouchDevice = false;
-        }
+        // Check if we're on a mobile device or tablet first
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isTablet = /iPad|Android/i.test(navigator.userAgent) && 'ontouchstart' in window;
+        
+        // Only use touch events for actual mobile devices and tablets
+        // Don't use touch events on desktop even if they have touch capability
+        let isTouchDevice = isMobile || isTablet;
 
         if (isTouchDevice) {
             // Touch device handling (iPhone, iPad, etc.)
-
             $('.word-grid').on('touchstart', 'td', function (e) {
                 e.preventDefault();
+                e.stopPropagation();
+                
                 isSelecting = true;
                 startCell = { r: $(this).data('r'), c: $(this).data('c') };
                 currentTouchCell = startCell;
@@ -384,10 +386,12 @@
                 updateSelection();
             });
 
-            $('.word-grid').on('touchmove', 'td', function (e) {
-                if (!isSelecting) return;
+            // Use touchmove on the document for better tracking
+            $(document).on('touchmove', function (e) {
+                if (!isSelecting || !startCell) return;
 
                 e.preventDefault();
+                e.stopPropagation();
 
                 // Get touch position and find the cell
                 const touch = e.originalEvent.touches[0];
@@ -405,16 +409,7 @@
                 }
             });
 
-            $('.word-grid').on('touchend', 'td', function (e) {
-                if (isSelecting) {
-                    finishSelection();
-                }
-                isSelecting = false;
-                startCell = null;
-                currentTouchCell = null;
-            });
-
-            // Also handle document touchend for safety
+            // Handle touchend on document for better reliability
             $(document).on('touchend', function (e) {
                 if (isSelecting) {
                     finishSelection();

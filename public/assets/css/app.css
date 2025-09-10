@@ -40,6 +40,14 @@
         width: 35px;
         height: 35px;
         font-size: 16px;
+        min-height: 35px;
+        min-width: 35px;
+    }
+    
+    /* Improve touch targets */
+    .word-grid td:active {
+        background-color: #198754;
+        color: white;
     }
 }
 
@@ -48,6 +56,23 @@
         width: 30px;
         height: 30px;
         font-size: 14px;
+        min-height: 30px;
+        min-width: 30px;
+    }
+}
+
+/* Additional mobile touch improvements */
+@media (hover: none) and (pointer: coarse) {
+    .word-grid td {
+        /* Larger touch targets for touch devices */
+        min-width: 44px;
+        min-height: 44px;
+        padding: 8px;
+    }
+    
+    .word-grid td:hover {
+        /* Disable hover effects on touch devices */
+        background-color: transparent;
     }
 }
 
