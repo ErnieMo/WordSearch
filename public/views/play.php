@@ -41,7 +41,24 @@ if (empty($puzzleId)) {
 } else {
     $pageContent = '
     <div class="row">
-        <div class="col-lg-8">
+        <div class="col-12 col-lg-8">
+            <!-- Timer & Progress -->
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Game Status</h6>
+                </div>
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Time</h6>
+                    <div class="timer h4 text-primary mb-3" id="gameTimer">00:00</div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-success" id="progressBar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted">
+                        <span id="wordsFound">0</span> of <span id="totalWords">0</span> words found
+                    </small>
+                </div>
+            </div>
+            
             <!-- Game Grid -->
             <div class="card">
                 <div class="card-header bg-success text-white">
@@ -61,18 +78,8 @@ if (empty($puzzleId)) {
             </div>
         </div>
         
-        <div class="col-lg-4">
+        <div class="col-12 col-lg-4">
             <div class="game-controls">
-                <!-- Timer -->
-                <div class="card mb-3">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Timer</h6>
-                    </div>
-                    <div class="card-body text-center">
-                        <div class="timer" id="gameTimer">00:00</div>
-                    </div>
-                </div>
-                
                 <!-- Verification Status -->
                 <!--
                 <div class="card mb-3">
@@ -89,21 +96,6 @@ if (empty($puzzleId)) {
                     </div>
                 </div>
                 -->
-                
-                <!-- Progress -->
-                <div class="card mb-3">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Progress</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="progress mb-2">
-                            <div class="progress-bar bg-success" id="progressBar" role="progressbar" style="width: 0%"></div>
-                        </div>
-                        <small class="text-muted">
-                            <span id="wordsFound">0</span> of <span id="totalWords">0</span> words found
-                        </small>
-                    </div>
-                </div>
                 
                 <!-- Word List -->
                 <div class="card mb-3">
@@ -256,9 +248,8 @@ if (empty($puzzleId)) {
     // Add development-only button if in development mode
     if (getenv('APP_ENV') === 'development') {
         $pageContent = str_replace(
-            '<!-- Game Controls -->',
-            '<!-- Game Controls -->
-                <!-- Development Controls -->
+            '<!-- Game Actions -->',
+            '<!-- Development Controls -->
                 <div class="card mb-3" id="devControls" style="display: none;">
                     <div class="card-header bg-warning text-dark">
                         <h6 class="mb-0"><i class="bi bi-bug me-2"></i>Development Tools</h6>
@@ -273,7 +264,9 @@ if (empty($puzzleId)) {
                             </button>
                         </div>
                     </div>
-                </div>',
+                </div>
+                
+                <!-- Game Actions -->',
             $pageContent
         );
     }

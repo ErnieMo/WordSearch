@@ -24,20 +24,15 @@ $pageContent = '
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h2 mb-0">
+            <div class="d-flex justify-content-between align-items-center mb-4 history-header">
+                <h1 class="h2 mb-0 history-title">
                     <i class="bi bi-clock-history me-2 text-primary"></i>
                     Game History
                 </h1>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary" id="refreshHistory">
-                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh
-                    </button>
-                </div>
             </div>
 
-            <!-- Game History Table -->
-            <div class="card">
+            <!-- Game History Table (Desktop) -->
+            <div class="card history-table">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="bi bi-list-ul me-2"></i>
@@ -71,17 +66,31 @@ $pageContent = '
                             </tbody>
                         </table>
                     </div>
-                    
-                    <!-- No Games Message -->
-                    <div id="noGames" class="text-center py-5" style="display: none;">
-                        <i class="bi bi-inbox display-1 text-muted"></i>
-                        <h4 class="text-muted mt-3">No Games Yet</h4>
-                        <p class="text-muted">Start playing to see your game history here!</p>
-                        <a href="/" class="btn btn-primary">
-                            <i class="bi bi-play-circle me-2"></i>Start New Game
-                        </a>
-                    </div>
                 </div>
+            </div>
+
+            <!-- Game History Cards (Mobile) -->
+            <div class="history-cards">
+                <div id="loadingHistoryCards" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading your game history...</p>
+                </div>
+                
+                <div id="historyCardsContainer">
+                    <!-- Cards will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- No Games Message -->
+            <div id="noGames" class="text-center py-5" style="display: none;">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4 class="text-muted mt-3">No Games Yet</h4>
+                <p class="text-muted">Start playing to see your game history here!</p>
+                <a href="/" class="btn btn-primary">
+                    <i class="bi bi-play-circle me-2"></i>Start New Game
+                </a>
             </div>
         </div>
     </div>
@@ -106,9 +115,7 @@ $(document).ready(function() {
 });
 
 function setupHistoryEventListeners() {
-    $('#refreshHistory').on('click', function() {
-        loadGameHistory();
-    });
+    // No event listeners needed for history page
 }
 
 function loadGameHistory() {
@@ -120,6 +127,7 @@ function loadGameHistory() {
     }
     
     $('#loadingHistory').show();
+    $('#loadingHistoryCards').show();
     $('#noGames').hide();
     
     $.ajax({
@@ -127,6 +135,7 @@ function loadGameHistory() {
         method: 'GET',
         success: function(response) {
             $('#loadingHistory').hide();
+            $('#loadingHistoryCards').hide();
             
             if (response.success && response.games.length > 0) {
                 gameHistory = response.games;
@@ -137,6 +146,7 @@ function loadGameHistory() {
         },
         error: function(xhr) {
             $('#loadingHistory').hide();
+            $('#loadingHistoryCards').hide();
             if (xhr.status === 401) {
                 showNoAuthMessage();
             } else {
@@ -147,12 +157,22 @@ function loadGameHistory() {
 }
 
 function renderGameHistory() {
+    // Render table view (desktop)
     const tbody = $('#historyTableBody');
     tbody.empty();
     
     gameHistory.forEach((game, index) => {
         const row = createGameHistoryRow(game, index);
         tbody.append(row);
+    });
+    
+    // Render card view (mobile)
+    const cardsContainer = $('#historyCardsContainer');
+    cardsContainer.empty();
+    
+    gameHistory.forEach((game, index) => {
+        const card = createGameHistoryCard(game, index);
+        cardsContainer.append(card);
     });
 }
 
@@ -200,6 +220,49 @@ function createGameHistoryRow(game, index) {
             </td>
             <td>${actions}</td>
         </tr>
+    `);
+}
+
+function createGameHistoryCard(game, index) {
+    const statusBadge = getStatusBadge(game.status);
+    const progressPercentage = game.total_words > 0 ? (game.words_found / game.total_words) * 100 : 0;
+    const startedDate = formatDate(game.created_at);
+    const gameTime = formatGameTime(game);
+    const actions = getActionButtons(game);
+    
+    return $(`
+        <div class="history-card">
+            <div class="history-card-header">
+                <div class="game-info">
+                    <div>
+                        <h6 class="game-title">${game.theme.charAt(0).toUpperCase() + game.theme.slice(1)} Puzzle</h6>
+                        <div class="game-meta">
+                            <span class="badge ${getDifficultyColor(game.difficulty)}">${game.difficulty}</span>
+                            <span class="text-muted">${startedDate}</span>
+                        </div>
+                    </div>
+                    <div class="game-status">
+                        ${statusBadge}
+                    </div>
+                </div>
+            </div>
+            <div class="history-card-body">
+                <div class="progress-section">
+                    <div class="progress-info">
+                        <span class="progress-text">${game.words_found}/${game.total_words} words found</span>
+                        <span class="progress-text">${gameTime}</span>
+                    </div>
+                    <div class="progress-bar-mobile">
+                        <div class="progress-fill" style="width: ${progressPercentage}%"></div>
+                    </div>
+                    ${getWordsFoundDisplay(game)}
+                </div>
+                
+                <div class="game-actions">
+                    ${actions}
+                </div>
+            </div>
+        </div>
     `);
 }
 

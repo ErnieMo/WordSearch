@@ -145,6 +145,11 @@ class GameService
             return false;
         }
 
+        // JSON encode words_found_data if present
+        if (isset($updateData['words_found_data'])) {
+            $updateData['words_found_data'] = json_encode($updateData['words_found_data']);
+        }
+        
         error_log("GameService::updateGame: Updating game $gameId with data: " . json_encode($updateData));
         
         $result = $this->db->update('wordsearch_games', $updateData, ['id' => $gameId]);

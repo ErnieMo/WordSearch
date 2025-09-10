@@ -174,6 +174,29 @@
         }
     }
 
+    // Calculate optimal grid cell size based on available screen width
+    function calculateOptimalGridSize() {
+        if (!gameState.grid || gameState.grid.length === 0) return;
+
+        const gridSize = gameState.grid.length;
+        const gridContainer = $('.word-grid').parent();
+        const containerWidth = gridContainer.width();
+
+        // Account for padding and margins
+        const availableWidth = containerWidth - 40; // 20px padding on each side
+        const calculatedCellSize = Math.floor(availableWidth / gridSize);
+
+        // Set minimum and maximum cell sizes
+        const minCellSize = 8;  // Minimum readable size
+        const maxCellSize = 50; // Maximum desktop size
+        const optimalSize = Math.max(minCellSize, Math.min(maxCellSize, calculatedCellSize));
+
+        // Set the CSS custom property
+        $('.word-grid').css('--grid-cell-size', optimalSize + 'px');
+
+        console.log(`Grid size: ${gridSize}x${gridSize}, Available width: ${availableWidth}px, Optimal cell size: ${optimalSize}px`);
+    }
+
     // Render the word search grid
     function renderGrid() {
         const gridContainer = $('#gameGrid');
@@ -202,6 +225,9 @@
 
         table.append(tbody);
         gridContainer.append(table);
+
+        // Calculate and set optimal grid cell size
+        calculateOptimalGridSize();
 
         // Setup grid interaction
         setupGridInteraction();
@@ -366,7 +392,7 @@
         // Check if we're on a mobile device or tablet first
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const isTablet = /iPad|Android/i.test(navigator.userAgent) && 'ontouchstart' in window;
-        
+
         // Only use touch events for actual mobile devices and tablets
         // Don't use touch events on desktop even if they have touch capability
         let isTouchDevice = isMobile || isTablet;
@@ -376,7 +402,7 @@
             $('.word-grid').on('touchstart', 'td', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 isSelecting = true;
                 startCell = { r: $(this).data('r'), c: $(this).data('c') };
                 currentTouchCell = startCell;
@@ -582,7 +608,7 @@
 
                 // Show success feedback
                 showWordFound(foundWord);
-                
+
                 // Update database with found word
                 updateWordFound(foundWord);
             }
