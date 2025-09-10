@@ -492,11 +492,7 @@ class Router
             $user = $this->getAuthenticatedUser();
             error_log("handleUpdateProgress: Authentication check - user: " . ($user ? json_encode($user) : 'null'));
             if (!$user) {
-<<<<<<< HEAD
                 error_log("handleUpdateProgress: No authenticated user found", 3, '/var/www/html/Logs/wordsearch_debug.log');
-=======
-                error_log("handleUpdateProgress: No authenticated user found");
->>>>>>> 5cbea1b (Sep 08, 2025 - 09:23 am - elapsed time)
                 $this->sendErrorResponse('Authentication required', 401);
                 return;
             }
@@ -534,17 +530,20 @@ class Router
                 $updateData['elapsed_time'] = (int)$elapsedTime;
                 error_log("handleUpdateProgress: Added elapsed_time to updateData: " . (int)$elapsedTime);
             } else {
-<<<<<<< HEAD
                 error_log("handleUpdateProgress: elapsed_time not provided in request data", 3, '/var/www/html/Logs/wordsearch_debug.log');
-=======
-                error_log("handleUpdateProgress: elapsed_time not provided in request data");
->>>>>>> 5cbea1b (Sep 08, 2025 - 09:23 am - elapsed time)
+            }
+            
+            // Get the current game record to get the game ID
+            $game = $this->gameService->getGameByPuzzleId($puzzleId);
+            if (!$game) {
+                $this->sendErrorResponse('Game not found', 404);
+                return;
             }
             
             // Debug logging
             error_log("handleUpdateProgress: About to update game with data: " . json_encode($updateData));
             
-            $result = $this->gameService->updateGame($puzzleId, $updateData);
+            $result = $this->gameService->updateGame($game['id'], $updateData);
             
             // Debug logging
             error_log("handleUpdateProgress: Update result: " . ($result ? 'success' : 'failed'));
@@ -1150,9 +1149,16 @@ class Router
                 'status' => 'completed'
             ];
 
+            // Get the current game record to get the game ID
+            $game = $this->gameService->getGameByPuzzleId($gameId);
+            if (!$game) {
+                $this->sendErrorResponse('Game not found', 404);
+                return;
+            }
+            
             error_log("About to call updateGame with: " . json_encode($updateData));
             
-            $result = $this->gameService->updateGame($gameId, $updateData);
+            $result = $this->gameService->updateGame($game['id'], $updateData);
             
             error_log("updateGame result: " . ($result ? 'true' : 'false'));
 

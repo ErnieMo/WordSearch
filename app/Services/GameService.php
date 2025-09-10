@@ -126,7 +126,7 @@ class GameService
     /**
      * Update a game with completion data
      */
-    public function updateGame(string $gameId, array $data): bool
+    public function updateGame(int $gameId, array $data): bool
     {
         $allowedFields = [
             'user_id', 'completion_time', 'hints_used', 'completed_at', 
@@ -141,21 +141,13 @@ class GameService
         }
 
         if (empty($updateData)) {
-<<<<<<< HEAD
             error_log("GameService::updateGame: No update data provided", 3, '/var/www/html/Logs/wordsearch_debug.log');
-=======
-            error_log("GameService::updateGame: No update data provided");
->>>>>>> 5cbea1b (Sep 08, 2025 - 09:23 am - elapsed time)
             return false;
         }
 
         error_log("GameService::updateGame: Updating game $gameId with data: " . json_encode($updateData));
         
-<<<<<<< HEAD
         $result = $this->db->update('wordsearch_games', $updateData, ['id' => $gameId]);
-=======
-        $result = $this->db->update('wordsearch_games', $updateData, ['puzzle_id' => $gameId]);
->>>>>>> 5cbea1b (Sep 08, 2025 - 09:23 am - elapsed time)
         
         error_log("GameService::updateGame: Update result: " . ($result ? 'success' : 'failed'));
         

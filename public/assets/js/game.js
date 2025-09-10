@@ -587,6 +587,9 @@
 
                 // Show success feedback
                 showWordFound(foundWord);
+                
+                // Update database with found word
+                updateWordFound(foundWord);
             }
         }
     }
