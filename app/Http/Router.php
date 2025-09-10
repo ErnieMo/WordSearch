@@ -603,6 +603,11 @@ class Router
                 $updateData['elapsed_time'] = (int)$elapsedTime;
             }
             
+            // Include status if provided
+            if (isset($data['status'])) {
+                $updateData['status'] = $data['status'];
+            }
+            
             error_log("handleWordFound: Updating game with data: " . json_encode($updateData), 3, '/var/www/html/Logs/wordsearch_debug.log');
             
             $result = $this->gameService->updateGame($game['id'], $updateData);

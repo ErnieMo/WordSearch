@@ -78,9 +78,17 @@
                         console.log('elapsed_time from game_progress:', response.game_progress.elapsed_time);
                         console.log('About to call startTimer with elapsedTime:', elapsedTime);
 
-                        // Start timer first, then render game
-                        startTimer(elapsedTime);
-                        console.log('startTimer called, now calling renderGame');
+                        // Check if game is completed before starting timer
+                        const isGameCompleted = gameState.foundWords.length === gameState.words.length;
+                        if (isGameCompleted) {
+                            console.log('Game is already completed, not starting timer');
+                            // Just display the final time without starting the timer
+                            displayFinalTime(elapsedTime);
+                        } else {
+                            // Start timer first, then render game
+                            startTimer(elapsedTime);
+                            console.log('startTimer called, now calling renderGame');
+                        }
                         renderGame();
                     } else {
                         // New game - initialize state
@@ -709,6 +717,16 @@
         });
     }
 
+    // Display final time for completed games without starting timer
+    function displayFinalTime(elapsedTime) {
+        const minutes = Math.floor(elapsedTime / 60);
+        const seconds = elapsedTime % 60;
+        const timeString = (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+
+        $('#gameTimer').text(timeString);
+        console.log('Displaying final time for completed game:', timeString);
+    }
+
     // Start the game timer
     function startTimer(initialElapsedTime = 0) {
         console.log('startTimer function called with initialElapsedTime:', initialElapsedTime);
@@ -745,6 +763,12 @@
     // Update the timer display
     function updateTimer() {
         if (!gameState.startTime) return;
+
+        // Stop timer if game is completed
+        if (gameState.foundWords.length === gameState.words.length) {
+            clearInterval(gameState.timer);
+            return;
+        }
 
         const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
         const minutes = Math.floor(elapsed / 60);
@@ -1280,16 +1304,23 @@
         // Calculate elapsed time
         const elapsedTime = gameState.startTime ? Math.floor((Date.now() - gameState.startTime) / 1000) : 0;
 
+        // Check if this is the last word (game will be completed)
+        const isGameCompleted = gameState.foundWords.length === gameState.words.length;
+
         // Prepare data for API call
         const data = {
             puzzle_id: window.puzzleId,
             found_word: foundWord,
             words_found: gameState.foundWords ? gameState.foundWords.length : 0,
             words_found_data: gameState.foundWords || [],
-            elapsed_time: elapsedTime
+            elapsed_time: elapsedTime,
+            status: isGameCompleted ? 'completed' : 'active'
         };
 
         console.log('Updating word found:', data);
+        if (isGameCompleted) {
+            console.log('This is the last word - marking game as completed');
+        }
 
         // Make API call to save word found
         $.ajax({
